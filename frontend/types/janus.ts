@@ -1,34 +1,35 @@
-export type JanusMode = 0 | 1 | 2; // 0=Semantic, 1=Text, 2=Morse
+export type JanusMode = 'semantic' | 'text_only' | 'morse';
 
-export type EmotionOverride = "auto" | "calm" | "urgent";
+export type EmotionOverride = 'auto' | 'calm' | 'urgent';
 
-// TODO: Verify these message types match the actual backend protocol when integrating
-
+// Control message sent TO backend (matches backend exactly)
 export type ControlMessage = {
-  type: "control";
-  mode: JanusMode;
-  isRecording: boolean;
-  isStreaming: boolean;
-  emotionOverride: EmotionOverride;
+  type: 'control';
+  is_streaming?: boolean | null;
+  is_recording?: boolean | null;
+  mode?: JanusMode | null;
+  emotion_override?: EmotionOverride | null;
 };
 
+// Transcript message FROM backend
 export type TranscriptMessage = {
-  type: "transcript";
-  id: string;
+  type: 'transcript';
   text: string;
-  mode: JanusMode;
-  inferredEmotion?: string;
-  emotionOverride?: EmotionOverride;
-  timestamp: number; // ms since epoch
+  start_ms?: number | null;
+  end_ms?: number | null;
+  avg_pitch_hz?: number | null;
+  avg_energy?: number | null;
+  // Frontend-only fields for UI
+  id?: string; // Generate on frontend
+  timestamp?: number; // Use created_at_ms or Date.now()
 };
 
+// Packet summary FROM backend
 export type PacketSummaryMessage = {
-  type: "packet-summary";
-  mode: JanusMode;
+  type: 'packet_summary'; // Note: underscore, not hyphen
   bytes: number;
-  estimatedRawBytes?: number;
-  timestamp: number;
+  mode: JanusMode;
+  created_at_ms: number;
 };
 
-export type ConnectionStatus = "connecting" | "connected" | "disconnected";
-
+export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
