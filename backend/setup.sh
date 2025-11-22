@@ -14,6 +14,6 @@ source venv/bin/activate
 echo "--- [3/3] Installing Python Libraries ---"
 # Upgrade pip first to avoid wheel errors
 pip install --upgrade pip
-pip install -r requirements.txt
+pip install -r ../requirements.txt
 
 echo "--- Setup Complete! Run 'source venv/bin/activate' to start. ---"
