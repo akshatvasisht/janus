@@ -1,0 +1,19 @@
+#!/bin/bash
+
+echo "--- [1/3] Installing System Dependencies (Requires Sudo) ---"
+# Update apt and install the C headers required for compilation
+sudo apt update
+sudo apt install -y python3-dev portaudio19-dev libaubio-dev libavcodec-dev libavformat-dev libavutil-dev libswresample-dev libsndfile1-dev pkg-config
+
+echo "--- [2/3] Creating Python Virtual Environment ---"
+# Remove old venv if it exists to ensure a clean schmod +x setup.shlate
+rm -rf venv
+python3 -m venv venv
+source venv/bin/activate
+
+echo "--- [3/3] Installing Python Libraries ---"
+# Upgrade pip first to avoid wheel errors
+pip install --upgrade pip
+pip install -r requirements.txt
+
+echo "--- Setup Complete! Run 'source venv/bin/activate' to start. ---"
