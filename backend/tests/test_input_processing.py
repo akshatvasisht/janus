@@ -20,6 +20,7 @@ from services.vad import VoiceActivityDetector
 from services.transcriber import Transcriber
 from services.prosody import ProsodyExtractor
 from sender_main import audio_producer, audio_consumer
+import sender_main
 
 
 # ============================================================================
@@ -579,20 +580,28 @@ class TestSenderMain:
         mock_vad = MagicMock()
         mock_transcriber = MagicMock()
         mock_prosody = MagicMock()
+        mock_link_sim = MagicMock()  # Phase 3: Link Simulator mock
         
         audio_queue = queue.Queue()
         stop_event = threading.Event()
         
         # Setup mocks - explicitly set return values
-        mock_vad.is_speech.return_value = True  # Always detect speech
+        # VAD should return True for first 5 calls (speech), then False for silence chunks
+        mock_vad.is_speech.side_effect = [True] * 5 + [False] * 35
         mock_transcriber.transcribe_buffer.return_value = "test text"
         mock_prosody.analyze_buffer.return_value = {'energy': 'Normal', 'pitch': 'Normal'}
         
         # Add valid 512-sample chunks to queue (matching CHUNK_SIZE)
         # Using proper chunk size prevents silent failures in consumer thread
-        for _ in range(5):  # Add more chunks to ensure processing
+        # Add 5 speech chunks
+        for _ in range(5):
             chunk = generate_audio_chunk(chunk_size=512)
             audio_queue.put(chunk)
+        
+        # Add 30 silence chunks to trigger silence threshold (SILENCE_THRESHOLD_CHUNKS = 20, needs > 20)
+        for _ in range(30):
+            silence_chunk = np.zeros(512, dtype=np.float32)
+            audio_queue.put(silence_chunk)
         
         # Set stop event after a delay to ensure consumer has time to process
         def set_stop():
@@ -601,98 +610,23 @@ class TestSenderMain:
         
         threading.Thread(target=set_stop, daemon=True).start()
         
-        # The consumer has is_streaming_mode hardcoded to False, so we create a test version
-        # with streaming enabled. This ensures VAD gets called and we can catch any silent failures.
-        def consumer_with_streaming_enabled(audio_service, vad_model, transcriber, prosody_tool, audio_queue, stop_event):
-            """Modified consumer with streaming mode enabled for testing."""
-            is_streaming_mode = True  # Enable streaming mode for test
-            is_recording_hold = False
-            audio_buffer = []
-            silence_counter = 0
-            SILENCE_THRESHOLD_CHUNKS = 16
-            previous_hold_state = False
-            
-            while not stop_event.is_set():
-                try:
-                    try:
-                        chunk = audio_queue.get(timeout=0.1)
-                    except queue.Empty:
-                        continue
-                    
-                    trigger_processing = False
-                    
-                    if is_recording_hold:
-                        audio_buffer.append(chunk)
-                        previous_hold_state = True
-                        audio_queue.task_done()
-                        continue
-                    
-                    if previous_hold_state and not is_recording_hold:
-                        trigger_processing = True
-                        previous_hold_state = False
-                    
-                    elif is_streaming_mode:  # This will now be True
-                        is_speech = vad_model.is_speech(chunk)
-                        
-                        if is_speech:
-                            audio_buffer.append(chunk)
-                            silence_counter = 0
-                        else:
-                            silence_counter += 1
-                            if len(audio_buffer) > 0:
-                                audio_buffer.append(chunk)
-                            if silence_counter > SILENCE_THRESHOLD_CHUNKS:
-                                trigger_processing = True
-                    else:
-                        audio_queue.task_done()
-                        continue
-                    
-                    if trigger_processing and len(audio_buffer) > 0:
-                        combined_audio = np.concatenate(audio_buffer)
-                        try:
-                            text = transcriber.transcribe_buffer(combined_audio)
-                        except Exception as e:
-                            print(f"Transcription error: {e}")
-                            text = ""
-                        try:
-                            meta = prosody_tool.analyze_buffer(combined_audio)
-                        except Exception as e:
-                            print(f"Prosody extraction error: {e}")
-                            meta = {'energy': 'Normal', 'pitch': 'Normal'}
-                        audio_buffer = []
-                        silence_counter = 0
-                    
-                    while not audio_queue.empty():
-                        try:
-                            audio_queue.get_nowait()
-                            audio_queue.task_done()
-                        except queue.Empty:
-                            break
-                    
-                    audio_queue.task_done()
-                    
-                except Exception as e:
-                    print(f"Error in audio consumer: {e}")
-                    import traceback
-                    traceback.print_exc()  # Print full traceback to catch silent failures
-                    audio_queue.task_done()
-        
-        # Run the modified consumer that has streaming mode enabled
-        try:
-            consumer_with_streaming_enabled(
-                mock_audio_service,
-                mock_vad,
-                mock_transcriber,
-                mock_prosody,
-                audio_queue,
-                stop_event
-            )
-        except Exception as e:
-            # Catch and report any exceptions to prevent silent failures
-            pytest.fail(f"Consumer crashed with exception: {e}")
+        # Run the REAL audio_consumer (imported from sender_main)
+        # It already defaults to is_streaming_mode=True, so no patching is needed.
+        audio_consumer(
+            mock_audio_service,
+            mock_vad,
+            mock_transcriber,
+            mock_prosody,
+            mock_link_sim,
+            audio_queue,
+            stop_event
+        )
         
         # Verify VAD was called
         assert mock_vad.is_speech.called, "VAD should have been called during consumer processing"
+        
+        # Phase 3: Verify link simulator transmit was called
+        assert mock_link_sim.transmit.called, "Link simulator transmit should have been called after processing speech"
     
     @pytest.mark.timeout(5)
     def test_audio_consumer_hold_mode(self):
@@ -701,6 +635,7 @@ class TestSenderMain:
         mock_vad = MagicMock()
         mock_transcriber = MagicMock()
         mock_prosody = MagicMock()
+        mock_link_sim = MagicMock()  # Phase 3: Link Simulator mock
         
         audio_queue = queue.Queue()
         stop_event = threading.Event()
@@ -725,6 +660,7 @@ class TestSenderMain:
         try:
             audio_consumer(
                 mock_audio_service, mock_vad, mock_transcriber, mock_prosody,
+                mock_link_sim,  # Phase 3: Pass link simulator
                 audio_queue, stop_event
             )
         except Exception as e:
@@ -741,6 +677,7 @@ class TestSenderMain:
         mock_vad = MagicMock()
         mock_transcriber = MagicMock()
         mock_prosody = MagicMock()
+        mock_link_sim = MagicMock()  # Phase 3: Link Simulator mock
         
         audio_queue = queue.Queue()
         stop_event = threading.Event()
@@ -760,6 +697,7 @@ class TestSenderMain:
         try:
             audio_consumer(
                 mock_audio_service, mock_vad, mock_transcriber, mock_prosody,
+                mock_link_sim,  # Phase 3: Pass link simulator
                 audio_queue, stop_event
             )
         except Exception:

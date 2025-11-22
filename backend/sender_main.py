@@ -42,7 +42,7 @@ def audio_consumer(audio_service, vad_model, transcriber, prosody_tool, link_sim
     Thread B (Consumer - "The Brain"): Processes audio chunks with hybrid trigger logic.
     """
     # Initialize state flags (Controlled by UI via WebSocket later)
-    is_streaming_mode = False  # Toggle Mode (Green Button)
+    is_streaming_mode = True  # Toggle Mode (Green Button)
     is_recording_hold = False  # Hold Mode (Red Button)
     audio_buffer = []  # List to accumulate audio chunks
     silence_counter = 0  # Counter for silence chunks
@@ -131,6 +131,15 @@ def audio_consumer(audio_service, vad_model, transcriber, prosody_tool, link_sim
                 audio_buffer = []
                 silence_counter = 0
                 
+                # Clear queue after processing to prevent backlog
+                # Drain any remaining chunks in queue to prevent buildup
+                while not audio_queue.empty():
+                    try:
+                        audio_queue.get_nowait()
+                        audio_queue.task_done()
+                    except queue.Empty:
+                        break
+                
                 # 5. Print/Log results
                 if text.strip():  # Only print if we got text
                     print(f"Captured: '{text}' | Tone: {meta}")
@@ -153,15 +162,6 @@ def audio_consumer(audio_service, vad_model, transcriber, prosody_tool, link_sim
                         link_simulator.transmit(serialized_bytes)
                     except Exception as e:
                         print(f"Packet transmission error: {e}")
-            
-            # Clear queue after processing to prevent backlog
-            # Drain any remaining chunks in queue to prevent buildup
-            while not audio_queue.empty():
-                try:
-                    audio_queue.get_nowait()
-                    audio_queue.task_done()
-                except queue.Empty:
-                    break
             
             audio_queue.task_done()
             
