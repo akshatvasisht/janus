@@ -21,8 +21,8 @@ export default function PushToTalk({
   onToggleStreaming,
 }: PushToTalkProps) {
   // Debounce hold start to prevent accidental triggers (50ms delay)
-  const debouncedHoldStart = useDebounce(onHoldStart, 50);
-  
+  const debouncedHoldStart = useDebounce(onHoldStart, 100);
+
   // Debounce hold end to prevent rapid state changes (100ms delay)
   const debouncedHoldEnd = useDebounce(onHoldEnd, 100);
 
@@ -32,7 +32,7 @@ export default function PushToTalk({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.repeat) return;
-      
+
       if (e.code === 'Space') {
         e.preventDefault(); // Prevent scrolling
         debouncedHoldStart();
@@ -57,12 +57,14 @@ export default function PushToTalk({
   }, [disabled, debouncedHoldStart, debouncedHoldEnd, onToggleStreaming]);
 
   // Determine visual state
-  let bgClass = 'bg-slate-800 border-slate-700 text-slate-100 hover:bg-slate-750';
+  let bgClass =
+    'bg-slate-800 border-slate-700 text-slate-100 hover:bg-slate-750';
   let shadowClass = '';
   let statusText = 'Hold to Talk';
-  
+
   if (disabled) {
-    bgClass = 'bg-slate-800 opacity-50 cursor-not-allowed border-slate-700 text-slate-500';
+    bgClass =
+      'bg-slate-800 opacity-50 cursor-not-allowed border-slate-700 text-slate-500';
     statusText = 'Disconnected';
   } else if (isRecording) {
     bgClass = 'bg-red-600 border-red-500 text-white';
@@ -85,63 +87,85 @@ export default function PushToTalk({
         onMouseDown={!disabled ? debouncedHoldStart : undefined}
         onMouseUp={!disabled ? debouncedHoldEnd : undefined}
         onMouseLeave={!disabled && isRecording ? debouncedHoldEnd : undefined}
-        onTouchStart={!disabled ? (e) => { e.preventDefault(); debouncedHoldStart(); } : undefined}
-        onTouchEnd={!disabled ? (e) => { e.preventDefault(); debouncedHoldEnd(); } : undefined}
-        onClick={!disabled && !isRecording ? (e) => {
-          // Logic: If it was a short click (not a hold), treat as toggle attempt if needed?
-          // Spec says: "Short Click/Tap: Toggles is_streaming"
-          // But we also have Hold logic.
-          // For simplicity with mouse events overlap, let's explicitly separate toggle button or 
-          // rely on `onClick` firing after `onMouseUp`.
-          // Since `onMouseUp` fires `onHoldEnd`, we need to be careful.
-          // Actually, the spec says: 
-          // Event A (Mouse Down): Sets is_recording = True.
-          // Event B (Mouse Up): Sets is_recording = False.
-          // Event C (Short Click/Tap): Toggles is_streaming = True/False.
-          
-          // Implementing "Short Click" logic usually requires timing.
-          // However, standard PTT is just hold. The Toggle might be better as a separate small button 
-          // or we handle it via timing here. 
-          // Let's stick to Hold = PTT. 
-          // The user might have meant "Tap" on a separate control or double tap? 
-          // "Short helper text – e.g. 'Hold to send a burst. Tap to toggle streaming.'" implies same button.
-          
-          // Let's trust the handler prop separation for now, but standard `button` click 
-          // triggers after mouseup. 
-        } : undefined}
+        onTouchStart={
+          !disabled
+            ? (e) => {
+                e.preventDefault();
+                debouncedHoldStart();
+              }
+            : undefined
+        }
+        onTouchEnd={
+          !disabled
+            ? (e) => {
+                e.preventDefault();
+                debouncedHoldEnd();
+              }
+            : undefined
+        }
+        onClick={
+          !disabled && !isRecording
+            ? (e) => {
+                // Logic: If it was a short click (not a hold), treat as toggle attempt if needed?
+                // Spec says: "Short Click/Tap: Toggles is_streaming"
+                // But we also have Hold logic.
+                // For simplicity with mouse events overlap, let's explicitly separate toggle button or
+                // rely on `onClick` firing after `onMouseUp`.
+                // Since `onMouseUp` fires `onHoldEnd`, we need to be careful.
+                // Actually, the spec says:
+                // Event A (Mouse Down): Sets is_recording = True.
+                // Event B (Mouse Up): Sets is_recording = False.
+                // Event C (Short Click/Tap): Toggles is_streaming = True/False.
+                // Implementing "Short Click" logic usually requires timing.
+                // However, standard PTT is just hold. The Toggle might be better as a separate small button
+                // or we handle it via timing here.
+                // Let's stick to Hold = PTT.
+                // The user might have meant "Tap" on a separate control or double tap?
+                // "Short helper text – e.g. 'Hold to send a burst. Tap to toggle streaming.'" implies same button.
+                // Let's trust the handler prop separation for now, but standard `button` click
+                // triggers after mouseup.
+              }
+            : undefined
+        }
         disabled={disabled}
       >
         {/* Inner Ring decoration */}
-        <div className={`absolute inset-2 rounded-full border-2 border-dashed opacity-20 ${isStreaming ? 'animate-spin-slow' : ''}`} />
-        
+        <div
+          className={`absolute inset-2 rounded-full border-2 border-dashed opacity-20 ${
+            isStreaming ? 'animate-spin-slow' : ''
+          }`}
+        />
+
         <span className="text-3xl font-bold tracking-wider uppercase pointer-events-none select-none">
-           {isRecording ? 'REC' : (isStreaming ? 'ON AIR' : 'PTT')}
+          {isRecording ? 'REC' : isStreaming ? 'ON AIR' : 'PTT'}
         </span>
         <span className="text-xs font-medium opacity-80 mt-1 pointer-events-none select-none">
           {statusText}
         </span>
       </button>
-      
+
       <div className="flex flex-col items-center gap-2 text-center">
         <p className="text-xs text-slate-400 max-w-[200px]">
-          Hold <strong>Space</strong> to talk. Tap button or press <strong>S</strong> to toggle stream.
+          Hold <strong>Space</strong> to talk. Tap button or press{' '}
+          <strong>S</strong> to toggle stream.
         </p>
-        
+
         {/* Explicit Toggle Button as an alternative interaction point */}
-        <button 
-            onClick={onToggleStreaming}
-            disabled={disabled}
-            className={`
+        <button
+          onClick={onToggleStreaming}
+          disabled={disabled}
+          className={`
                 text-xs px-3 py-1.5 rounded-full border transition-colors
-                ${isStreaming 
-                    ? 'bg-blue-900/30 border-blue-800 text-blue-200 hover:bg-blue-900/50' 
-                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-750 hover:text-slate-200'}
+                ${
+                  isStreaming
+                    ? 'bg-blue-900/30 border-blue-800 text-blue-200 hover:bg-blue-900/50'
+                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-750 hover:text-slate-200'
+                }
             `}
         >
-            {isStreaming ? 'Stop Streaming' : 'Start Streaming'}
+          {isStreaming ? 'Stop Streaming' : 'Start Streaming'}
         </button>
       </div>
     </div>
   );
 }
-
