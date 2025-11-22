@@ -1,6 +1,7 @@
 // TODO: Integrate with real audio capture/playback when backend is ready
 // Currently only handles UI state - no actual microphone access or audio playback
 import React, { useCallback, useEffect } from 'react';
+import { useDebounce } from '../hooks/useDebounce';
 
 type PushToTalkProps = {
   isRecording: boolean;
@@ -19,7 +20,12 @@ export default function PushToTalk({
   onHoldEnd,
   onToggleStreaming,
 }: PushToTalkProps) {
+  // Debounce hold start to prevent accidental triggers (50ms delay)
+  const debouncedHoldStart = useDebounce(onHoldStart, 50);
   
+  // Debounce hold end to prevent rapid state changes (100ms delay)
+  const debouncedHoldEnd = useDebounce(onHoldEnd, 100);
+
   // Handle keyboard shortcuts
   useEffect(() => {
     if (disabled) return;
@@ -29,7 +35,7 @@ export default function PushToTalk({
       
       if (e.code === 'Space') {
         e.preventDefault(); // Prevent scrolling
-        onHoldStart();
+        debouncedHoldStart();
       } else if (e.code === 'KeyS') {
         onToggleStreaming();
       }
@@ -37,7 +43,7 @@ export default function PushToTalk({
 
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
-        onHoldEnd();
+        debouncedHoldEnd();
       }
     };
 
@@ -48,7 +54,7 @@ export default function PushToTalk({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [disabled, onHoldStart, onHoldEnd, onToggleStreaming]);
+  }, [disabled, debouncedHoldStart, debouncedHoldEnd, onToggleStreaming]);
 
   // Determine visual state
   let bgClass = 'bg-slate-800 border-slate-700 text-slate-100 hover:bg-slate-750';
@@ -76,11 +82,11 @@ export default function PushToTalk({
           border-4 transition-all duration-200 ease-in-out outline-none
           ${bgClass} ${shadowClass}
         `}
-        onMouseDown={!disabled ? onHoldStart : undefined}
-        onMouseUp={!disabled ? onHoldEnd : undefined}
-        onMouseLeave={!disabled && isRecording ? onHoldEnd : undefined}
-        onTouchStart={!disabled ? (e) => { e.preventDefault(); onHoldStart(); } : undefined}
-        onTouchEnd={!disabled ? (e) => { e.preventDefault(); onHoldEnd(); } : undefined}
+        onMouseDown={!disabled ? debouncedHoldStart : undefined}
+        onMouseUp={!disabled ? debouncedHoldEnd : undefined}
+        onMouseLeave={!disabled && isRecording ? debouncedHoldEnd : undefined}
+        onTouchStart={!disabled ? (e) => { e.preventDefault(); debouncedHoldStart(); } : undefined}
+        onTouchEnd={!disabled ? (e) => { e.preventDefault(); debouncedHoldEnd(); } : undefined}
         onClick={!disabled && !isRecording ? (e) => {
           // Logic: If it was a short click (not a hold), treat as toggle attempt if needed?
           // Spec says: "Short Click/Tap: Toggles is_streaming"
