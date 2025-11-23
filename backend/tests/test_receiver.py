@@ -40,10 +40,10 @@ def send_test_packet(text, mode, tcp=False, prosody=None, override_emotion=None)
     # Serialize packet
     serialized_bytes = packet.serialize()
     
-    # Determine target address
-    target_ip = "127.0.0.1"
-    target_port = 5005
-    
+    # Determine target address (Read from ENV or default to localhost)
+    target_ip = os.getenv("TARGET_IP", "127.0.0.1")
+    target_port = int(os.getenv("TARGET_PORT", 5005))
+
     if tcp:
         # TCP mode: connect and send with length prefix
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -76,12 +76,16 @@ def send_test_packet(text, mode, tcp=False, prosody=None, override_emotion=None)
 
 
 if __name__ == "__main__":
-    # Send a "Hello World" packet via UDP by default
-    print("Sending test packet: 'Hello World' (SEMANTIC_VOICE mode, UDP)")
+    # Check if we are in TCP mode (e.g. for Ngrok)
+    use_tcp = os.getenv("USE_TCP", "False").lower() == "true"
+
+    print(f"Configuration: TCP={use_tcp}")
+
+    print("Sending test packet: 'Hello World'")
     send_test_packet(
         text="Hello World",
         mode=JanusMode.SEMANTIC_VOICE,
-        tcp=False
+        tcp=use_tcp
     )
     
     print("\nTest packet sent successfully!")
