@@ -115,6 +115,9 @@ def receiver_loop(audio_service, stop_event, event_loop):
         # Accept connection
         sock, addr = listen_sock.accept()
         logger.info(f"Connection established from {addr}")
+        
+        # Set a timeout on the socket so operations are not indefinitely blocking
+        sock.settimeout(1.0)
     except Exception as e:
         logger.error(f"Failed to set up TCP listener: {e}")
         if listen_sock:
@@ -138,7 +141,12 @@ def receiver_loop(audio_service, stop_event, event_loop):
             try:
                 # A. RECEIVE DATA (Strict TCP Framing)
                 # Read 4-byte big-endian length prefix first
-                length_bytes = recv_exact(sock, 4)
+                try:
+                    length_bytes = recv_exact(sock, 4)
+                except socket.timeout:
+                    # If nothing was received within 1.0 second, just continue the loop
+                    continue
+                
                 if length_bytes is None:
                     logger.info("Connection closed by sender")
                     break
@@ -146,7 +154,12 @@ def receiver_loop(audio_service, stop_event, event_loop):
                 payload_length = struct.unpack('>I', length_bytes)[0]
                 
                 # Read the full packet
-                data = recv_exact(sock, payload_length)
+                try:
+                    data = recv_exact(sock, payload_length)
+                except socket.timeout:
+                    # If nothing was received within 1.0 second, just continue the loop
+                    continue
+                
                 if data is None:
                     logger.info("Connection closed while reading packet")
                     break
@@ -237,9 +250,14 @@ def receiver_loop(audio_service, stop_event, event_loop):
                 except queue.Full:
                     logger.warning("Warning: Playback queue full, skipping audio chunk")
 
-            except Exception as e:
-                logger.error(f"Receiver Error: {e}")
+            except socket.timeout:
+                # Timeout already handled above, but catch here as well for safety
                 continue
+            except Exception as e:
+                # Handle real socket errors (e.g., connection reset by peer)
+                logger.error(f"Receiver socket error: {e}")
+                # Break on socket errors to allow cleanup
+                break
     
     finally:
         # Cleanup
