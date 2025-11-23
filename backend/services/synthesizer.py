@@ -10,7 +10,7 @@ Purpose: The 'Brain' of the receiver. It converts the received 'JanusPacket'
 """
 
 # Audio format constants
-SAMPLE_RATE = 16000  # Hz
+SAMPLE_RATE = 44100  # Hz
 MORSE_FREQUENCY = 800  # Hz for Morse code beeps
 
 # Import Fish Audio SDK (new API)
