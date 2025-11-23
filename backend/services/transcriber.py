@@ -67,3 +67,30 @@ class Transcriber:
         # Join and return trimmed text
         full_text = ' '.join(text_parts).strip()
         return full_text
+
+    def transcribe_file(self, file_path):
+        """
+        Transcribes an audio file directly from disk.
+        Faster-Whisper handles format conversions (WebM/WAV/etc) automatically.
+        
+        Args:
+            file_path: Path to the audio file (supports various formats including WAV, WebM, MP3, etc.)
+        
+        Returns:
+            str: Transcribed text string
+        """
+        # Transcribe with beam_size=1 for lowest latency
+        segments, info = self.model.transcribe(
+            file_path,
+            beam_size=1,
+            language='en'
+        )
+        
+        # Aggregate segments into a single text string
+        text_parts = []
+        for segment in segments:
+            text_parts.append(segment.text.strip())
+        
+        # Join and return trimmed text
+        full_text = ' '.join(text_parts).strip()
+        return full_text

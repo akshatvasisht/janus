@@ -4,6 +4,7 @@ import PushToTalk from './PushToTalk';
 import ModeToggle from './ModeToggle';
 import EmotionSelector from './EmotionSelector';
 import QuickStats from './QuickStats';
+import VoiceCloner from './VoiceCloner';
 
 type ControlPanelProps = {
   status: ConnectionStatus;
@@ -56,7 +57,7 @@ export default function ControlPanel({
                 <ModeToggle 
                     mode={mode} 
                     onChange={(m) => onUpdateControl({ mode: m })} 
-                    isMorseEnabled={false} // Disabled as per spec (stretch goal)
+                    isMorseEnabled={true}
                 />
             </div>
 
@@ -66,6 +67,11 @@ export default function ControlPanel({
                     value={emotionOverride}
                     onChange={(v) => onUpdateControl({ emotionOverride: v })}
                 />
+            </div>
+
+            <div className="space-y-3 pt-4 border-t border-slate-800">
+                <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Voice Cloning</h2>
+                <VoiceCloner disabled={!isConnected} />
             </div>
         </section>
 

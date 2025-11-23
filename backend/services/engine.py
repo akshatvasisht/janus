@@ -4,9 +4,11 @@ import threading
 import time
 import numpy as np
 import logging
+import os
 from concurrent.futures import ThreadPoolExecutor
 
 from ..common import engine_state
+from ..common.protocol import JanusPacket, JanusMode as ProtocolJanusMode
 from ..api.types import TranscriptMessage, PacketSummaryMessage, JanusMode
 
 # Import services
@@ -15,8 +17,27 @@ from .audio_io import AudioService
 from .vad import VoiceActivityDetector
 from .transcriber import Transcriber
 from .prosody import ProsodyExtractor
+from .link_simulator import LinkSimulator
 
 logger = logging.getLogger(__name__)
+
+
+def map_api_mode_to_protocol_mode(api_mode: JanusMode) -> ProtocolJanusMode:
+    """
+    Map API JanusMode (string enum) to Protocol JanusMode (int enum).
+    
+    Args:
+        api_mode: JanusMode from api.types (string enum)
+        
+    Returns:
+        ProtocolJanusMode: JanusMode from common.protocol (int enum)
+    """
+    mapping = {
+        JanusMode.SEMANTIC: ProtocolJanusMode.SEMANTIC_VOICE,
+        JanusMode.TEXT_ONLY: ProtocolJanusMode.TEXT_ONLY,
+        JanusMode.MORSE: ProtocolJanusMode.MORSE_CODE,
+    }
+    return mapping.get(api_mode, ProtocolJanusMode.SEMANTIC_VOICE)
 
 
 def audio_producer(audio_service, audio_queue, stop_event):
@@ -59,6 +80,17 @@ async def smart_ear_loop(
         vad_model = VoiceActivityDetector()
         transcriber = Transcriber()
         prosody_tool = ProsodyExtractor()
+
+        # Configure Link Simulator
+        # Read from environment variables or use defaults
+        target_ip = os.getenv("TARGET_IP", "127.0.0.1")
+        target_port = int(os.getenv("TARGET_PORT", "5005"))
+        
+        # Auto-detect TCP mode if ngrok is detected in target IP
+        use_tcp = "ngrok" in target_ip.lower() or os.getenv("USE_TCP", "").lower() == "true"
+        
+        print(f"Link Simulator: {target_ip}:{target_port} ({'TCP' if use_tcp else 'UDP'})")
+        link_simulator = LinkSimulator(target_ip=target_ip, target_port=target_port, use_tcp=use_tcp)
 
         print("Smart Ear services ready.")
 
@@ -174,6 +206,25 @@ async def smart_ear_loop(
                 if text.strip():
                     print(f"Captured: '{text}' | Tone: {meta}")
 
+                    # Define transmission wrapper
+                    def transmit_packet_blocking():
+                        try:
+                            # Map API mode (string enum) to Protocol mode (int enum)
+                            protocol_mode = map_api_mode_to_protocol_mode(control_state.mode)
+                            packet = JanusPacket(
+                                text=text,
+                                mode=protocol_mode,  # Uses UI selection (Morse/Text/Semantic)
+                                prosody=meta,
+                                override_emotion=control_state.emotion_override
+                            )
+                            link_simulator.transmit(packet.serialize())
+                        except Exception as e:
+                            print(f"Transmission Error: {e}")
+
+                    # Await transmission (Simulation Throttle)
+                    # This keeps the WS alive but blocks the next audio chunk processing
+                    await loop.run_in_executor(executor, transmit_packet_blocking)
+
                     # Construct messages
                     # Map 'energy'/'pitch' strings/values to float if needed,
                     # but for now existing prosody returns dict.
@@ -197,6 +248,8 @@ async def smart_ear_loop(
         stop_event.set()
         producer_thread.join(timeout=2)
         audio_service.close()
+        if 'link_simulator' in locals():
+            link_simulator.close()
         executor.shutdown(wait=False)
         print("Smart Ear stopped.")
 

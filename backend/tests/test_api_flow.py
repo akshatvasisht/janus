@@ -1,4 +1,5 @@
 import pytest
+import time
 from fastapi.testclient import TestClient
 from backend.server import app
 from backend.common import engine_state
@@ -31,6 +32,9 @@ def test_websocket_control_flow():
             "mode": "text_only"
         })
 
+        # Wait for async message processing to complete
+        time.sleep(0.1)
+
         # 3. Verify State Update
         assert engine_state.control_state.is_streaming is True
         assert engine_state.control_state.mode == "text_only"
@@ -51,3 +55,22 @@ def test_websocket_partial_update():
         assert engine_state.control_state.emotion_override == "panicked"
         # Should remain False
         assert engine_state.control_state.is_recording is False
+
+def test_websocket_morse_mode():
+    """Verify switching to Morse mode works via WebSocket control message."""
+    # Reset state to default
+    engine_state.control_state.mode = "semantic"
+
+    with client.websocket_connect("/ws/janus") as websocket:
+        # Send Control Message with "morse" mode
+        websocket.send_json({
+            "type": "control",
+            "mode": "morse"
+        })
+
+        # Wait for async message processing to complete
+        time.sleep(0.1)
+
+        # Verify State Update
+        # This confirms api.types.JanusMode.MORSE ("morse") is accepted and updated in the engine state
+        assert engine_state.control_state.mode == "morse"
