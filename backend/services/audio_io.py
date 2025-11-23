@@ -14,7 +14,7 @@ class AudioService:
         """
         Initialize the Audio Service.
         1. Setup PyAudio instance.
-        2. Define constants for Sample Rate (e.g., 16000Hz), Chunk Size (e.g., 512), and Channels (Mono).
+        2. Define constants for Sample Rate (e.g., 44100Hz), Chunk Size (e.g., 512), and Channels (Mono).
         3. Open a specific input stream for the Microphone.
         4. Open a specific output stream for the Speakers (for later playback).
         """

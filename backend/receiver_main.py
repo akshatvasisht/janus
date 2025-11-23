@@ -160,9 +160,9 @@ def receiver_loop():
                     if pitch == 'High' and energy == 'Loud':
                         emotion_tag = 'Excited'
                     elif pitch == 'High' and energy == 'Normal':
-                        emotion_tag = 'Happy'
+                        emotion_tag = 'Joyful'
                     elif pitch == 'Low' and energy == 'Loud':
-                        emotion_tag = 'Urgent'
+                        emotion_tag = 'Panicked'
                     elif pitch == 'Low' and energy in ('Quiet', 'Low'):
                         emotion_tag = 'Serious'
                     else:
