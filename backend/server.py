@@ -33,6 +33,9 @@ async def lifespan(app: FastAPI):
     # Ensure queues are initialized on the running loop
     transcript_queue = engine_state.get_transcript_queue()
     packet_queue = engine_state.get_packet_queue()
+    
+    # Get the event loop for async operations in receiver_loop
+    event_loop = asyncio.get_running_loop()
 
     # Launch the Smart Ear engine as a background task
     task = asyncio.create_task(
@@ -47,7 +50,7 @@ async def lifespan(app: FastAPI):
     # Start receiver loop in a separate thread
     receiver_thread = threading.Thread(
         target=receiver_loop,
-        args=(global_audio_service, receiver_stop_event),
+        args=(global_audio_service, receiver_stop_event, event_loop),
         daemon=True
     )
     receiver_thread.start()

@@ -76,7 +76,7 @@ def playback_worker(audio_service, playback_queue, stop_event):
             playback_queue.task_done()
 
 
-def receiver_loop(audio_service, stop_event):
+def receiver_loop(audio_service, stop_event, event_loop):
     """
     Receiver loop for full-duplex audio.
     Listens for TCP connections, receives JanusPackets, synthesizes audio, and plays it.
@@ -84,6 +84,7 @@ def receiver_loop(audio_service, stop_event):
     Args:
         audio_service: Shared AudioService instance for playback
         stop_event: Threading event to signal shutdown
+        event_loop: asyncio event loop for emitting events to frontend
     """
     # 1. SETUP
     api_key = os.getenv("FISH_AUDIO_API_KEY")
@@ -156,6 +157,37 @@ def receiver_loop(audio_service, stop_event):
                 except Exception as e:
                     logger.error(f"Corrupt packet received: {e}")
                     continue
+
+                # B.5. EMIT EVENTS TO FRONTEND
+                # Get queues and emit transcript/packet summary events
+                try:
+                    transcript_queue = engine_state.get_transcript_queue()
+                    packet_queue = engine_state.get_packet_queue()
+                    
+                    # Map protocol mode to API mode
+                    api_mode = map_protocol_mode_to_api_mode(packet.mode)
+                    
+                    # Extract numeric values from prosody if available
+                    prosody = packet.prosody or {}
+                    avg_pitch_hz = prosody.get('avg_pitch_hz') if isinstance(prosody.get('avg_pitch_hz'), (int, float)) else None
+                    avg_energy = prosody.get('avg_energy') if isinstance(prosody.get('avg_energy'), (int, float)) else None
+                    
+                    # Emit events asynchronously using the event loop
+                    future = asyncio.run_coroutine_threadsafe(
+                        _emit_events(
+                            text=packet.text,
+                            avg_pitch_hz=avg_pitch_hz,
+                            avg_energy=avg_energy,
+                            mode=api_mode,
+                            transcript_queue=transcript_queue,
+                            packet_queue=packet_queue,
+                        ),
+                        event_loop
+                    )
+                    # Don't wait for completion - fire and forget to avoid blocking
+                except Exception as e:
+                    logger.error(f"Failed to emit events to frontend: {e}")
+                    # Continue processing even if event emission fails
 
                 # C. VISUALIZE (The "Terminal Dashboard")
                 # Determine emotion tag for display
@@ -248,6 +280,24 @@ def map_api_mode_to_protocol_mode(api_mode: JanusMode) -> ProtocolJanusMode:
         JanusMode.MORSE: ProtocolJanusMode.MORSE_CODE,
     }
     return mapping.get(api_mode, ProtocolJanusMode.SEMANTIC_VOICE)
+
+
+def map_protocol_mode_to_api_mode(protocol_mode: ProtocolJanusMode) -> JanusMode:
+    """
+    Map Protocol JanusMode (int enum) back to API JanusMode (string enum).
+    
+    Args:
+        protocol_mode: ProtocolJanusMode from common.protocol (int enum)
+        
+    Returns:
+        JanusMode: JanusMode from api.types (string enum)
+    """
+    mapping = {
+        ProtocolJanusMode.SEMANTIC_VOICE: JanusMode.SEMANTIC,
+        ProtocolJanusMode.TEXT_ONLY: JanusMode.TEXT_ONLY,
+        ProtocolJanusMode.MORSE_CODE: JanusMode.MORSE,
+    }
+    return mapping.get(protocol_mode, JanusMode.SEMANTIC)
 
 
 def audio_producer(audio_service, audio_queue, stop_event):
