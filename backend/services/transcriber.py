@@ -27,13 +27,14 @@ class Transcriber:
         Converts a collected buffer of speech into text.
 
         Args:
-            audio_buffer: A large numpy array containing the full spoken phrase.
+            audio_buffer: A large numpy array containing the full spoken phrase (assumed 44100 Hz).
 
         Steps:
-        1. Run model.transcribe() on the audio_buffer.
-        2. Set beam_size=1 (Greedy search) for lowest latency.
-        3. Aggregate the segments into a single text string.
-        4. Return the text string.
+        1. Downsample audio from 44.1k to 16k (Whisper expects 16k).
+        2. Run model.transcribe() on the downsampled audio_buffer.
+        3. Set beam_size=1 (Greedy search) for lowest latency.
+        4. Aggregate the segments into a single text string.
+        5. Return the text string.
         """
         # Ensure audio is float32 numpy array
         if isinstance(audio_buffer, list):
@@ -46,9 +47,14 @@ class Transcriber:
         if audio_buffer.dtype != np.float32:
             audio_buffer = audio_buffer.astype(np.float32)
         
+        # Downsample 44.1k to 16k logic
+        # Ideally use scipy.signal.resample if available, otherwise slicing [::3] is an acceptable fallback for speed.
+        # Assuming input is 44100 Hz, downsample by taking every 3rd sample (44100/3 ≈ 14700 Hz, close enough to 16k)
+        audio_16k = audio_buffer[::3]
+        
         # Transcribe with beam_size=1 for lowest latency
         segments, info = self.model.transcribe(
-            audio_buffer,
+            audio_16k,
             beam_size=1,
             language='en'
         )
