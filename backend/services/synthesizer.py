@@ -13,8 +13,9 @@ Purpose: The 'Brain' of the receiver. It converts the received 'JanusPacket'
 SAMPLE_RATE = 16000  # Hz
 MORSE_FREQUENCY = 800  # Hz for Morse code beeps
 
-# Import Fish Audio SDK
-from fish_audio_sdk import Session, TTSRequest, ReferenceAudio
+# Import Fish Audio SDK (new API)
+from fishaudio import FishAudio
+from fishaudio.types import ReferenceAudio
 
 # Import Numpy (for Morse Code math)
 import numpy as np
@@ -26,14 +27,14 @@ class Synthesizer:
     def __init__(self, api_key, reference_audio_path=None):
         """
         Initialize the Synthesizer.
-        1. Setup Fish Audio Session with API Key.
+        1. Setup Fish Audio Client with API Key.
         2. Load the 'Reference Audio' file into memory (bytes).
            - This is the "Voice ID" we are cloning.
            - If no file provided, use a default system ID.
         3. Define Morse Code Dictionary (A=.-, B=-..., etc).
         """
-        # Initialize Fish Audio SDK session
-        self.session = Session(api_key)
+        # Initialize Fish Audio SDK client (new API)
+        self.client = FishAudio(api_key=api_key)
         
         # FIX: Initialize the attribute explicitly
         self.reference_audio_bytes = None
@@ -85,52 +86,60 @@ class Synthesizer:
         #    Determine the "Emotion Tag" to prepend to the text.
         if packet.override_emotion and packet.override_emotion != "Auto":
             # Logic A (Manual Override):
-            prompt = f"[{packet.override_emotion}] {packet.text}"
+            # Use parentheses format for Fish Audio tones
+            prompt = f"({packet.override_emotion}) {packet.text}"
         else:
             # Logic B (Auto/Prosody Map):
             prosody = packet.prosody or {}
             pitch = prosody.get('pitch', 'Normal')
             energy = prosody.get('energy', 'Normal')
             
-            # Map combination to emotion tags
+            # Map combination to emotion tags (using Fish Audio's available tones)
             if pitch == 'High' and energy == 'Loud':
-                emotion_tag = "Excited"
+                emotion_tag = "excited"  # High pitch + loud = excited
             elif pitch == 'High' and energy == 'Normal':
-                emotion_tag = "Happy"
+                emotion_tag = "happy"  # High pitch + normal = happy
+            elif pitch == 'High' and energy in ('Quiet', 'Low'):
+                emotion_tag = "whispering"  # High pitch + quiet = whispering
+            elif pitch == 'Low' and energy == 'Loud':
+                emotion_tag = "shouting"  # Low pitch + loud = shouting
             elif pitch == 'Low' and energy == 'Low':
-                emotion_tag = "Serious"
+                emotion_tag = "sad"  # Low pitch + low energy = sad
             elif pitch == 'Low' and energy == 'Normal':
-                emotion_tag = "Calm"
+                emotion_tag = "calm"  # Low pitch + normal = calm
+            elif energy == 'Loud':
+                emotion_tag = "shouting"  # Any pitch + loud = shouting
+            elif energy in ('Quiet', 'Low'):
+                emotion_tag = "whispering"  # Any pitch + quiet = whispering
             else:
-                emotion_tag = "Neutral"
+                emotion_tag = "calm"  # Default to calm
             
-            prompt = f"[{emotion_tag}] {packet.text}"
+            prompt = f"({emotion_tag}) {packet.text}"
 
         # 2. CALL FISH AUDIO API
         try:
-            # Create ReferenceAudio if we have reference bytes
-            reference = None
+            # Create references list if we have reference audio bytes
+            # Note: ReferenceAudio requires both audio and text parameters
+            # Since we don't have the original reference transcript, we use an empty string
+            references = None
             if self.reference_audio_bytes:
-                reference = ReferenceAudio(self.reference_audio_bytes)
+                references = [ReferenceAudio(
+                    audio=self.reference_audio_bytes,
+                    text=""  # Reference transcript not available, using empty string
+                )]
             
-            # Create TTSRequest
-            request = TTSRequest(
+            # Call API directly (new API - no TTSRequest object needed)
+            # Note: "pcm" format may not be supported, using "wav" which contains PCM data
+            print(prompt)
+            audio_bytes = self.client.tts.convert(
                 text=prompt,
-                reference=reference,
-                format="pcm",
+                #references=references,
+                reference_id="5196af35f6ff4a0dbf541793fc9f2157",
+                format="wav",  # Changed from "pcm" - wav contains PCM data
                 latency="balanced"
             )
             
-            # Call API and collect result
-            result = self.session.synthesize(request)
-            
-            # Handle iterator or bytes response
-            if hasattr(result, '__iter__') and not isinstance(result, bytes):
-                # Collect bytes from iterator
-                audio_bytes = b''.join(result)
-            else:
-                audio_bytes = result
-            
+            # New API returns complete audio bytes directly (not an iterator)
             return audio_bytes
             
         except Exception as e:
@@ -144,24 +153,16 @@ class Synthesizer:
         For the Hackathon, calling Fish Audio without a Reference ID (Generic Voice) is fine.
         """
         try:
-            # Create TTSRequest without reference (generic voice)
-            request = TTSRequest(
+            # Call API without reference (generic voice)
+            # New API - no TTSRequest object needed, pass parameters directly
+            audio_bytes = self.client.tts.convert(
                 text=text,
-                reference=None,
-                format="pcm",
+                references=None,  # No reference = generic voice
+                format="wav",  # Changed from "pcm" - wav contains PCM data
                 latency="balanced"
             )
             
-            # Call API and collect result
-            result = self.session.synthesize(request)
-            
-            # Handle iterator or bytes response
-            if hasattr(result, '__iter__') and not isinstance(result, bytes):
-                # Collect bytes from iterator
-                audio_bytes = b''.join(result)
-            else:
-                audio_bytes = result
-            
+            # New API returns complete audio bytes directly (not an iterator)
             return audio_bytes
         except Exception as e:
             # Return empty audio bytes on error

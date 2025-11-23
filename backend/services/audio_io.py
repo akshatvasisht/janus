@@ -18,7 +18,7 @@ class AudioService:
         4. Open a specific output stream for the Speakers (for later playback).
         """
         # Audio configuration constants
-        self.SAMPLE_RATE = 16000
+        self.SAMPLE_RATE = 44100
         self.CHUNK_SIZE = 512
         self.CHANNELS = 1
         self.FORMAT = pyaudio.paInt16
