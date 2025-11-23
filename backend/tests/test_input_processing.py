@@ -27,7 +27,7 @@ import sender_main
 # Test Utilities and Fixtures
 # ============================================================================
 
-def generate_sine_wave(frequency=440.0, duration=1.0, sample_rate=16000, amplitude=0.5):
+def generate_sine_wave(frequency=440.0, duration=1.0, sample_rate=44100, amplitude=0.5):
     """
     Generate a sine wave audio signal (for ProsodyExtractor tests).
     
@@ -45,12 +45,12 @@ def generate_sine_wave(frequency=440.0, duration=1.0, sample_rate=16000, amplitu
     return wave
 
 
-def generate_silence(duration=0.1, sample_rate=16000):
+def generate_silence(duration=0.1, sample_rate=44100):
     """Generate silence (zeros) for testing."""
     return np.zeros(int(sample_rate * duration), dtype=np.float32)
 
 
-def generate_audio_chunk(chunk_size=512, sample_rate=16000):
+def generate_audio_chunk(chunk_size=512, sample_rate=44100):
     """
     Generate a valid audio chunk matching CHUNK_SIZE (512 samples).
     
@@ -158,7 +158,7 @@ class TestAudioService:
         
         service = AudioService()
         
-        assert service.SAMPLE_RATE == 16000
+        assert service.SAMPLE_RATE == 44100
         assert service.CHUNK_SIZE == 512
         assert service.CHANNELS == 1
         assert mock_pa.open.call_count == 2  # Input and output streams
@@ -325,13 +325,13 @@ class TestVoiceActivityDetector:
         
         mock_hub_load.return_value = (mock_model, mock_utils)
         
-        vad = VoiceActivityDetector(threshold=0.5)
+        vad = VoiceActivityDetector(threshold=0.5, sample_rate=44100)
         
         # Manually overwrite model to ensure test control
         vad.model = mock_model
         
         assert vad.threshold == 0.5
-        assert vad.sample_rate == 16000
+        assert vad.sample_rate == 44100
         mock_hub_load.assert_called_once()
     
     @patch('services.vad.torch.hub.load')
@@ -462,15 +462,15 @@ class TestProsodyExtractor:
     
     def test_init(self):
         """Test ProsodyExtractor initialization."""
-        extractor = ProsodyExtractor(sample_rate=16000, hop_size=512)
+        extractor = ProsodyExtractor(sample_rate=44100, hop_size=512)
         
-        assert extractor.sample_rate == 16000
+        assert extractor.sample_rate == 44100
         assert extractor.hop_size == 512
         assert extractor.pitch_detector is not None
     
     def test_analyze_buffer_returns_dict(self):
         """Test analyze_buffer returns dict with energy and pitch keys."""
-        extractor = ProsodyExtractor()
+        extractor = ProsodyExtractor(sample_rate=44100)
         
         # Use real sine wave (not mocked)
         audio_buffer = generate_sine_wave(frequency=440.0, duration=0.5, amplitude=0.3)
@@ -484,7 +484,7 @@ class TestProsodyExtractor:
     
     def test_analyze_buffer_energy_classification(self):
         """Test energy classification (Quiet/Normal/Loud)."""
-        extractor = ProsodyExtractor()
+        extractor = ProsodyExtractor(sample_rate=44100)
         
         # Test Quiet (low amplitude)
         quiet_audio = generate_sine_wave(amplitude=0.02, duration=0.5)
@@ -503,7 +503,7 @@ class TestProsodyExtractor:
     
     def test_analyze_buffer_pitch_detection(self):
         """Test pitch detection with 440Hz sine wave."""
-        extractor = ProsodyExtractor()
+        extractor = ProsodyExtractor(sample_rate=44100)
         
         # 440Hz should be detected as Normal pitch (between 120-200Hz threshold)
         # Actually, 440Hz is above 200Hz, so should be 'High'
@@ -515,7 +515,7 @@ class TestProsodyExtractor:
     
     def test_analyze_buffer_with_list(self):
         """Test analyze_buffer handles list input."""
-        extractor = ProsodyExtractor()
+        extractor = ProsodyExtractor(sample_rate=44100)
         
         # Pass list of arrays
         audio_list = [

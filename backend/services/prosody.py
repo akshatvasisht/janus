@@ -8,7 +8,7 @@ import aubio
 import numpy as np
 
 class ProsodyExtractor:
-    def __init__(self, sample_rate=16000, hop_size=512):
+    def __init__(self, sample_rate=44100, hop_size=512):
         """
         Initialize Aubio analyzers.
         1. Create a Pitch detection object (method='yin' or 'yinfft').

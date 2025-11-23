@@ -24,7 +24,7 @@
 │ │ ├── [transcriber.py](http://transcriber.py/) # Faster-Whisper (Int8)
 │ │ ├── [prosody.py](http://prosody.py/) # Aubio (Pitch/Energy)
 │ │ ├── [synthesizer.py](http://synthesizer.py/) # Fish Audio SDK
-│ │ └── link_simulator.py # Renamed from 'mars_link'. Handles the 300bps throttle.
+│ │ └── link_simulator.py # Handles the 300bps throttle.
 │ ├── /common
 
 │ │ └── [protocol.py](http://protocol.py/) # MessagePack serialization
@@ -75,7 +75,7 @@
 | **Prosody Analysis**   | **aubio**                 | Extracting Pitch (F0) and Energy.                       | Real-time C-library optimized for audio feature extraction.                              |
 | **Generative TTS**     | **Fish Audio SDK**        | The "Throat" (Reconstructs voice from text + metadata). | The core novelty; handles the "Hallucination" of the voice.                              |
 | **Audio I/O**          | **PyAudio**               | Capturing raw mic data & playing output audio.          | Lower latency and more reliable than browser-based audio for Python processing.          |
-| **Protocol**           | **MessagePack**           | Serializing the data payload (The "Mars Packet").       | Binary format that is significantly smaller and faster than JSON.                        |
+| **Protocol**           | **MessagePack**           | Serializing the data payload (The "Packet").       | Binary format that is significantly smaller and faster than JSON.                        |
 | **Network Logic**      | **Python `socket`**       | Simulating the 300bps connection.                       | Native library allows manual control of the "Sleep" throttle.                            |
 | **Communication**      | **Socket.io** (or raw WS) | Sending status updates from Python to React.            | Low latency communication to update the UI charts in real-time.                          |
 
