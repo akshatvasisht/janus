@@ -98,7 +98,7 @@ class Synthesizer:
             if pitch == 'High' and energy == 'Loud':
                 emotion_tag = "excited"  # High pitch + loud = excited
             elif pitch == 'High' and energy == 'Normal':
-                emotion_tag = "happy"  # High pitch + normal = happy
+                emotion_tag = "joyful"  # High pitch + normal = joyful
             elif pitch == 'High' and energy in ('Quiet', 'Low'):
                 emotion_tag = "whispering"  # High pitch + quiet = whispering
             elif pitch == 'Low' and energy == 'Loud':
@@ -106,13 +106,13 @@ class Synthesizer:
             elif pitch == 'Low' and energy == 'Low':
                 emotion_tag = "sad"  # Low pitch + low energy = sad
             elif pitch == 'Low' and energy == 'Normal':
-                emotion_tag = "calm"  # Low pitch + normal = calm
+                emotion_tag = "relaxed"  # Low pitch + normal = relaxed
             elif energy == 'Loud':
                 emotion_tag = "shouting"  # Any pitch + loud = shouting
             elif energy in ('Quiet', 'Low'):
                 emotion_tag = "whispering"  # Any pitch + quiet = whispering
             else:
-                emotion_tag = "calm"  # Default to calm
+                emotion_tag = "relaxed"  # Default to relaxed
             
             prompt = f"({emotion_tag}) {packet.text}"
 

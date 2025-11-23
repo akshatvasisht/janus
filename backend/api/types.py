@@ -9,8 +9,8 @@ class JanusMode(str, Enum):
 
 class EmotionOverride(str, Enum):
     AUTO = "auto"
-    CALM = "calm"
-    URGENT = "urgent"
+    RELAXED = "relaxed"
+    PANICKED = "panicked"
 
 class ControlMessage(BaseModel):
     """

@@ -209,17 +209,17 @@ class TestPromptConstruction:
         call_args = mock_client.tts.convert.call_args
         assert call_args.kwargs['text'].startswith('(excited)')
         
-        # Test High pitch + Normal energy -> happy
+        # Test High pitch + Normal energy -> joyful
         packet.prosody = {'energy': 'Normal', 'pitch': 'High'}
         result = synthesizer._generate_semantic_audio(packet)
         call_args = mock_client.tts.convert.call_args
-        assert call_args.kwargs['text'].startswith('(happy)')
+        assert call_args.kwargs['text'].startswith('(joyful)')
         
-        # Test Low pitch + Normal energy -> calm
+        # Test Low pitch + Normal energy -> relaxed
         packet.prosody = {'energy': 'Normal', 'pitch': 'Low'}
         result = synthesizer._generate_semantic_audio(packet)
         call_args = mock_client.tts.convert.call_args
-        assert call_args.kwargs['text'].startswith('(calm)')
+        assert call_args.kwargs['text'].startswith('(relaxed)')
 
 
 # ============================================================================

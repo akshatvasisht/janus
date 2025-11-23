@@ -1,6 +1,6 @@
 export type JanusMode = 'semantic' | 'text_only' | 'morse';
 
-export type EmotionOverride = 'auto' | 'calm' | 'urgent';
+export type EmotionOverride = 'auto' | 'relaxed' | 'panicked';
 
 // Control message sent TO backend (matches backend exactly)
 export type ControlMessage = {

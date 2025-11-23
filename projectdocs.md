@@ -103,7 +103,7 @@
   - `Mode 0`: Full Semantic (Text + Prosody Data).
   - `Mode 1`: Text Only (No Prosody, use default receiver voice).
 
-  - `Override`: An optional field for "Forced Emotion" (e.g., user selects "Calm" manually).
+  - `Override`: An optional field for "Forced Emotion" (e.g., user selects "Relaxed" manually).
   - _(Stretch Goal) Mode 2: Morse Code (Text converted to beeps)._
 - **Implement Serialization:** Use `msgpack` to compress the payload.
 - **Build Network Simulation:** Create the TCP/UDP socket with the **"Application-Layer Throttle"** (the sleep function discussed previously) to simulate 300bps.
@@ -132,7 +132,7 @@
   - **PacketSummaryMessage** (backend → UI)
   Include enums:
   - `JanusMode` (semantic / text-only / morse)
-  - `EmotionOverride` (auto / calm / urgent)
+  - `EmotionOverride` (auto / relaxed / panicked)
 - **Shared State & Queues:**
   In `engine_state.py`, implement:
   - `control_state` — current flags (`mode`, `is_streaming`, `is_recording`, `emotion_override`)
@@ -158,7 +158,7 @@
 - **Implement Mode Selector:** Add a dropdown or radio button set for:
   - _Standard (Semantic Voice)_
   - _Text Only (Bandwidth Saver)_
-  - _Emotion Overrides:_ [Auto, Forced Calm, Forced Urgent]
+  - _Emotion Overrides:_ [Auto, Forced Relaxed, Forced Panicked]
   - _(Stretch Goal) Morse Code (Emergency)_
 - **Develop Bandwidth Visualizer:** Create the live comparison (telemetry) chart (Standard VoIP Cost vs. Janus Cost) that updates every time a packet is sent.
 
