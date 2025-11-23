@@ -97,14 +97,14 @@ def receiver_loop():
         listen_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         listen_sock.bind(('0.0.0.0', receiver_port))
         listen_sock.listen(1)
-        print(f"Listening for Mars Transmissions on TCP port {receiver_port}...")
+        print(f"Listening for Transmissions on TCP port {receiver_port}...")
         # Accept connection
         sock, addr = listen_sock.accept()
         print(f"Connection established from {addr}")
     else:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind(('0.0.0.0', receiver_port))
-        print(f"Listening for Mars Transmissions on UDP port {receiver_port}...")
+        print(f"Listening for Transmissions on UDP port {receiver_port}...")
     
     # Create playback queue and thread
     playback_queue = queue.Queue(maxsize=100)
