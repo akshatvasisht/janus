@@ -7,6 +7,7 @@ Purpose: Handles the raw interface with the microphone and speakers using PyAudi
 
 import pyaudio
 import numpy as np
+import warnings
 
 class AudioService:
     def __init__(self):
@@ -23,26 +24,40 @@ class AudioService:
         self.CHANNELS = 1
         self.FORMAT = pyaudio.paInt16
         
-        # Initialize PyAudio
-        self.pyaudio_instance = pyaudio.PyAudio()
+        # Safety flag for hardware availability
+        self._pyaudio_available = False
         
-        # Open input stream (microphone)
-        self.input_stream = self.pyaudio_instance.open(
-            format=self.FORMAT,
-            channels=self.CHANNELS,
-            rate=self.SAMPLE_RATE,
-            input=True,
-            frames_per_buffer=self.CHUNK_SIZE
-        )
-        
-        # Open output stream (speakers)
-        self.output_stream = self.pyaudio_instance.open(
-            format=self.FORMAT,
-            channels=self.CHANNELS,
-            rate=self.SAMPLE_RATE,
-            output=True,
-            frames_per_buffer=self.CHUNK_SIZE
-        )
+        try:
+            # Initialize PyAudio
+            self.pyaudio_instance = pyaudio.PyAudio()
+            
+            # Open input stream (microphone)
+            self.input_stream = self.pyaudio_instance.open(
+                format=self.FORMAT,
+                channels=self.CHANNELS,
+                rate=self.SAMPLE_RATE,
+                input=True,
+                frames_per_buffer=self.CHUNK_SIZE
+            )
+            
+            # Open output stream (speakers)
+            self.output_stream = self.pyaudio_instance.open(
+                format=self.FORMAT,
+                channels=self.CHANNELS,
+                rate=self.SAMPLE_RATE,
+                output=True,
+                frames_per_buffer=self.CHUNK_SIZE
+            )
+            
+            self._pyaudio_available = True
+            print("✅ AudioService initialized successfully.")
+            
+        except Exception as e:
+            # Catch the ALSA/Invalid Device error
+            warnings.warn(f"Audio Initialization Failed: {e}. Running in Silent/Mock mode.")
+            self.pyaudio_instance = None
+            self.input_stream = None
+            self.output_stream = None
 
     def read_chunk(self):
         """
@@ -55,6 +70,10 @@ class AudioService:
            - This format is required by Silero VAD and Whisper.
         4. Return the numpy array.
         """
+        if not self._pyaudio_available:
+            # Return silent data if initialization failed
+            return np.zeros(self.CHUNK_SIZE, dtype=np.float32)
+        
         try:
             # Read raw bytes from input stream
             raw_data = self.input_stream.read(self.CHUNK_SIZE, exception_on_overflow=False)
@@ -79,6 +98,10 @@ class AudioService:
         1. Receive audio data (likely bytes or numpy array).
         2. Write data to the output stream.
         """
+        if not self._pyaudio_available:
+            # Skip writing if no hardware is available
+            return
+        
         # Convert numpy array to int16 if needed
         if isinstance(audio_data, np.ndarray):
             if audio_data.dtype == np.float32:
@@ -102,13 +125,22 @@ class AudioService:
         1. Stop and close streams.
         2. Terminate PyAudio instance.
         """
-        if self.input_stream:
-            self.input_stream.stop_stream()
-            self.input_stream.close()
+        if self.input_stream is not None:
+            try:
+                self.input_stream.stop_stream()
+                self.input_stream.close()
+            except Exception:
+                pass  # Ignore errors during cleanup
         
-        if self.output_stream:
-            self.output_stream.stop_stream()
-            self.output_stream.close()
+        if self.output_stream is not None:
+            try:
+                self.output_stream.stop_stream()
+                self.output_stream.close()
+            except Exception:
+                pass  # Ignore errors during cleanup
         
-        if self.pyaudio_instance:
-            self.pyaudio_instance.terminate()
+        if self.pyaudio_instance is not None:
+            try:
+                self.pyaudio_instance.terminate()
+            except Exception:
+                pass  # Ignore errors during cleanup
