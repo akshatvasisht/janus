@@ -11,9 +11,9 @@ import queue
 import threading
 from dotenv import load_dotenv
 
-from common.protocol import JanusPacket, JanusMode
-from services.audio_io import AudioService
-from services.synthesizer import Synthesizer
+from backend.common.protocol import JanusPacket, JanusMode
+from backend.services.audio_io import AudioService
+from backend.services.synthesizer import Synthesizer
 
 
 def recv_exact(sock, n):

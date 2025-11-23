@@ -12,15 +12,15 @@ from unittest.mock import Mock, MagicMock, patch, PropertyMock
 import sys
 import os
 
-# Add backend to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+# Add project root to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
-from services.audio_io import AudioService
-from services.vad import VoiceActivityDetector
-from services.transcriber import Transcriber
-from services.prosody import ProsodyExtractor
-from sender_main import audio_producer, audio_consumer
-import sender_main
+from backend.services.audio_io import AudioService
+from backend.services.vad import VoiceActivityDetector
+from backend.services.transcriber import Transcriber
+from backend.services.prosody import ProsodyExtractor
+from backend.sender_main import audio_producer, audio_consumer
+import backend.sender_main as sender_main
 
 
 # ============================================================================
@@ -138,7 +138,7 @@ def mock_torch_hub():
 class TestAudioService:
     """Tests for AudioService class."""
     
-    @patch('services.audio_io.pyaudio')
+    @patch('backend.services.audio_io.pyaudio')
     def test_init(self, mock_pyaudio_module):
         """Test AudioService initialization."""
         # Setup mock PyAudio
@@ -163,7 +163,7 @@ class TestAudioService:
         assert service.CHANNELS == 1
         assert mock_pa.open.call_count == 2  # Input and output streams
     
-    @patch('services.audio_io.pyaudio')
+    @patch('backend.services.audio_io.pyaudio')
     def test_read_chunk_returns_float32_array(self, mock_pyaudio_module):
         """Test read_chunk returns float32 numpy array."""
         # Setup mock PyAudio
@@ -194,7 +194,7 @@ class TestAudioService:
         assert len(chunk) == 4  # 4 int16 samples
         assert np.all(chunk >= -1.0) and np.all(chunk <= 1.0)  # Normalized
     
-    @patch('services.audio_io.pyaudio')
+    @patch('backend.services.audio_io.pyaudio')
     def test_read_chunk_handles_overflow(self, mock_pyaudio_module):
         """Test read_chunk handles IOError overflow gracefully."""
         # Setup mock PyAudio
@@ -223,7 +223,7 @@ class TestAudioService:
         assert len(chunk) == 512  # CHUNK_SIZE
         assert np.all(chunk == 0.0)
     
-    @patch('services.audio_io.pyaudio')
+    @patch('backend.services.audio_io.pyaudio')
     def test_write_chunk_with_numpy_array(self, mock_pyaudio_module):
         """Test write_chunk handles numpy array input."""
         # Setup mock PyAudio
@@ -252,7 +252,7 @@ class TestAudioService:
         written_bytes = mock_output_stream.write.call_args[0][0]
         assert isinstance(written_bytes, bytes)
     
-    @patch('services.audio_io.pyaudio')
+    @patch('backend.services.audio_io.pyaudio')
     def test_write_chunk_with_bytes(self, mock_pyaudio_module):
         """Test write_chunk handles bytes input."""
         # Setup mock PyAudio
@@ -279,7 +279,7 @@ class TestAudioService:
         assert mock_output_stream.write.called
         assert mock_output_stream.write.call_args[0][0] == audio_bytes
     
-    @patch('services.audio_io.pyaudio')
+    @patch('backend.services.audio_io.pyaudio')
     def test_close(self, mock_pyaudio_module):
         """Test close properly cleans up resources."""
         # Setup mock PyAudio
@@ -314,7 +314,7 @@ class TestAudioService:
 class TestVoiceActivityDetector:
     """Tests for VoiceActivityDetector class."""
     
-    @patch('services.vad.torch.hub.load')
+    @patch('backend.services.vad.torch.hub.load')
     def test_init(self, mock_hub_load):
         """Test VoiceActivityDetector initialization."""
         # Let class initialize normally, then overwrite model with mock
@@ -334,7 +334,7 @@ class TestVoiceActivityDetector:
         assert vad.sample_rate == 44100
         mock_hub_load.assert_called_once()
     
-    @patch('services.vad.torch.hub.load')
+    @patch('backend.services.vad.torch.hub.load')
     def test_is_speech_returns_boolean(self, mock_hub_load):
         """Test is_speech returns boolean."""
         # Let class initialize normally, then overwrite model with fresh mock
@@ -355,7 +355,7 @@ class TestVoiceActivityDetector:
         assert isinstance(result, bool)
         assert result == True  # 0.8 > 0.5
     
-    @patch('services.vad.torch.hub.load')
+    @patch('backend.services.vad.torch.hub.load')
     def test_is_speech_handles_silence(self, mock_hub_load):
         """Test is_speech returns False for silence."""
         # Let class initialize normally, then overwrite model with fresh mock
@@ -376,7 +376,7 @@ class TestVoiceActivityDetector:
         
         assert result == False  # 0.2 < 0.5
     
-    @patch('services.vad.torch.hub.load')
+    @patch('backend.services.vad.torch.hub.load')
     def test_reset(self, mock_hub_load):
         """Test reset method (no-op but callable)."""
         # Let class initialize normally
@@ -396,7 +396,7 @@ class TestVoiceActivityDetector:
 class TestTranscriber:
     """Tests for Transcriber class."""
     
-    @patch('services.transcriber.WhisperModel')
+    @patch('backend.services.transcriber.WhisperModel')
     def test_init(self, mock_whisper_class, mock_whisper_model):
         """Test Transcriber initialization."""
         mock_whisper_class.return_value = mock_whisper_model
@@ -409,7 +409,7 @@ class TestTranscriber:
             compute_type='int8'
         )
     
-    @patch('services.transcriber.WhisperModel')
+    @patch('backend.services.transcriber.WhisperModel')
     def test_transcribe_buffer_with_array(self, mock_whisper_class, mock_whisper_model):
         """Test transcribe_buffer with numpy array."""
         # Setup mock transcribe to return segments
@@ -430,7 +430,7 @@ class TestTranscriber:
         assert isinstance(result, str)
         assert result == "hello world"
     
-    @patch('services.transcriber.WhisperModel')
+    @patch('backend.services.transcriber.WhisperModel')
     def test_transcribe_buffer_with_list(self, mock_whisper_class, mock_whisper_model):
         """Test transcribe_buffer converts list to array."""
         def mock_transcribe(audio_buffer, beam_size=None, language=None):
