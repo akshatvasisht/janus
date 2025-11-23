@@ -21,7 +21,7 @@ from fishaudio.types import ReferenceAudio
 import numpy as np
 
 # Import Enum (JanusMode)
-from common.protocol import JanusMode
+from ..common.protocol import JanusMode
 
 # Import os for path operations and hot-reload
 import os

@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import logging
+import threading
 from contextlib import asynccontextmanager
 
 # API Routers
@@ -11,7 +12,8 @@ from .api.socket_manager import router as ws_router
 
 # Engine & State
 from .common import engine_state
-from .services.engine import smart_ear_loop
+from .services.engine import smart_ear_loop, receiver_loop
+from .services.audio_io import AudioService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,6 +23,12 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # Startup logic
     logger.info("Starting Smart Ear Engine...")
+
+    # Initialize shared AudioService for full-duplex audio
+    global_audio_service = AudioService()
+    
+    # Create stop event for receiver loop
+    receiver_stop_event = threading.Event()
 
     # Ensure queues are initialized on the running loop
     transcript_queue = engine_state.get_transcript_queue()
@@ -32,18 +40,40 @@ async def lifespan(app: FastAPI):
             control_state=engine_state.control_state,
             transcript_queue=transcript_queue,
             packet_queue=packet_queue,
+            audio_service=global_audio_service,
         )
     )
+
+    # Start receiver loop in a separate thread
+    receiver_thread = threading.Thread(
+        target=receiver_loop,
+        args=(global_audio_service, receiver_stop_event),
+        daemon=True
+    )
+    receiver_thread.start()
+    logger.info("Receiver loop started.")
 
     yield
 
     # Shutdown logic
-    # We could gracefully cancel the task here if we stored reference to it
+    logger.info("Shutting down...")
+    
+    # Signal receiver loop to stop
+    receiver_stop_event.set()
+    
+    # Wait for receiver thread to finish (with timeout)
+    receiver_thread.join(timeout=2)
+    
+    # Cancel the Smart Ear engine task
     task.cancel()
     try:
         await task
     except asyncio.CancelledError:
         pass
+    
+    # Close shared audio service
+    global_audio_service.close()
+    
     logger.info("Smart Ear Engine stopped.")
 
 

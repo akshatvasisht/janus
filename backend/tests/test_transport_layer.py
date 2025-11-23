@@ -11,11 +11,11 @@ from unittest.mock import Mock, MagicMock, patch, call
 import sys
 import os
 
-# Add backend to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+# Add project root to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
-from common.protocol import JanusPacket, JanusMode
-from services.link_simulator import LinkSimulator, BYTES_PER_SECOND
+from backend.common.protocol import JanusPacket, JanusMode
+from backend.services.link_simulator import LinkSimulator, BYTES_PER_SECOND
 
 
 # ============================================================================
@@ -153,7 +153,7 @@ class TestJanusPacket:
 class TestLinkSimulator:
     """Tests for LinkSimulator network throttling class."""
     
-    @patch('services.link_simulator.socket.socket')
+    @patch('backend.services.link_simulator.socket.socket')
     def test_initialization_defaults(self, mock_socket_class):
         """Verify UDP socket created by default."""
         mock_socket = MagicMock()
@@ -169,7 +169,7 @@ class TestLinkSimulator:
         # Should NOT call connect (UDP doesn't connect)
         mock_socket.connect.assert_not_called()
     
-    @patch('services.link_simulator.socket.socket')
+    @patch('backend.services.link_simulator.socket.socket')
     def test_tcp_socket_creation(self, mock_socket_class):
         """Verify TCP socket created when use_tcp=True."""
         mock_socket = MagicMock()
@@ -185,7 +185,7 @@ class TestLinkSimulator:
         # Should call connect for TCP
         mock_socket.connect.assert_called_once_with(("127.0.0.1", 5005))
     
-    @patch('services.link_simulator.socket.socket')
+    @patch('backend.services.link_simulator.socket.socket')
     def test_ngrok_autodetect(self, mock_socket_class):
         """Init with ngrok host, verify TCP mode is used."""
         mock_socket = MagicMock()
@@ -201,8 +201,8 @@ class TestLinkSimulator:
         )
         mock_socket.connect.assert_called_with(("0.tcp.ngrok.io", 12345))
     
-    @patch('services.link_simulator.time.sleep')
-    @patch('services.link_simulator.socket.socket')
+    @patch('backend.services.link_simulator.time.sleep')
+    @patch('backend.services.link_simulator.socket.socket')
     def test_throttling_math(self, mock_socket_class, mock_sleep):
         """Call transmit(150 bytes), verify sleep called with ~4.0s (150/37.5)."""
         mock_socket = MagicMock()
@@ -227,8 +227,8 @@ class TestLinkSimulator:
             actual_sleep_time = sleep_call[0][0]
             assert abs(actual_sleep_time - expected_sleep_per_tick) < 0.01
     
-    @patch('services.link_simulator.time.sleep')
-    @patch('services.link_simulator.socket.socket')
+    @patch('backend.services.link_simulator.time.sleep')
+    @patch('backend.services.link_simulator.socket.socket')
     def test_tcp_framing(self, mock_socket_class, mock_sleep):
         """Init in TCP mode, call transmit(b'hello'), verify sendall received framed payload."""
         mock_socket = MagicMock()
@@ -256,8 +256,8 @@ class TestLinkSimulator:
         assert payload_length == len(payload)  # Should be 5
         assert sent_data[4:] == payload  # Rest should be original payload
     
-    @patch('services.link_simulator.time.sleep')
-    @patch('services.link_simulator.socket.socket')
+    @patch('backend.services.link_simulator.time.sleep')
+    @patch('backend.services.link_simulator.socket.socket')
     def test_udp_no_framing(self, mock_socket_class, mock_sleep):
         """Init in UDP mode, call transmit, verify sendto received raw bytes."""
         mock_socket = MagicMock()
@@ -280,7 +280,7 @@ class TestLinkSimulator:
         assert sent_data == payload
         assert target_address == ("127.0.0.1", 5005)
     
-    @patch('services.link_simulator.socket.socket')
+    @patch('backend.services.link_simulator.socket.socket')
     def test_socket_error_handling(self, mock_socket_class):
         """Mock socket to raise ConnectionRefusedError, verify initialization handles it gracefully."""
         mock_socket = MagicMock()
@@ -295,8 +295,8 @@ class TestLinkSimulator:
         # Simulator should still be created (socket exists even if connect failed)
         assert simulator.socket is not None
     
-    @patch('services.link_simulator.time.sleep')
-    @patch('services.link_simulator.socket.socket')
+    @patch('backend.services.link_simulator.time.sleep')
+    @patch('backend.services.link_simulator.socket.socket')
     def test_transmit_error_handling(self, mock_socket_class, mock_sleep):
         """Test transmit handles socket errors gracefully."""
         mock_socket = MagicMock()
@@ -311,8 +311,8 @@ class TestLinkSimulator:
         payload = b'test'
         simulator.transmit(payload)  # Should complete without raising
     
-    @patch('services.link_simulator.time.sleep')
-    @patch('services.link_simulator.socket.socket')
+    @patch('backend.services.link_simulator.time.sleep')
+    @patch('backend.services.link_simulator.socket.socket')
     def test_tcp_framing_length_calculation(self, mock_socket_class, mock_sleep):
         """Verify TCP framing includes header in delay calculation."""
         mock_socket = MagicMock()
