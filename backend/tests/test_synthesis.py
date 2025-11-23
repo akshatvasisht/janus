@@ -26,10 +26,10 @@ SAMPLE_RATE = 16000  # Hz
 # Synthesizer Initialization Tests
 # ============================================================================
 
+@patch('services.synthesizer.Session')
 class TestSynthesizerInit:
     """Tests for Synthesizer initialization."""
     
-    @patch('fish_audio_sdk.Session')
     def test_init_loads_reference(self, mock_session_class):
         """Verify reference audio file is read as bytes when path provided."""
         mock_session = MagicMock()
@@ -52,17 +52,16 @@ class TestSynthesizerInit:
             Synthesizer(api_key="test_key", reference_audio_path="/fake/path.wav")
             mock_file.assert_called_once_with("/fake/path.wav", 'rb')
     
-    def test_init_no_reference(self):
+    def test_init_no_reference(self, mock_session_class):
         """Verify synthesizer works without reference audio."""
-        with patch('fish_audio_sdk.Session') as mock_session_class:
-            mock_session = MagicMock()
-            mock_session_class.return_value = mock_session
-            
-            synthesizer = Synthesizer(api_key="test_key")
-            
-            # Correct Assertion for Mocked Class Instance
-            mock_session_class.assert_called_once_with("test_key")
-            assert synthesizer.reference_audio_bytes is None
+        mock_session = MagicMock()
+        mock_session_class.return_value = mock_session
+        
+        synthesizer = Synthesizer(api_key="test_key")
+        
+        # Correct Assertion for Mocked Class Instance
+        mock_session_class.assert_called_once_with("test_key")
+        assert synthesizer.reference_audio_bytes is None
 
 
 # ============================================================================
@@ -72,7 +71,7 @@ class TestSynthesizerInit:
 class TestSynthesizerRouting:
     """Tests for synthesize() routing logic."""
     
-    @patch('fish_audio_sdk.Session')
+    @patch('services.synthesizer.Session')
     @patch.object(Synthesizer, '_generate_semantic_audio')
     def test_routing_semantic(self, mock_method, mock_session_class):
         """Verify synthesize() routes JanusMode.SEMANTIC_VOICE to _generate_semantic_audio."""
@@ -97,7 +96,7 @@ class TestSynthesizerRouting:
         mock_method.assert_called_once_with(packet)
         assert result == mock_audio_bytes
     
-    @patch('fish_audio_sdk.Session')
+    @patch('services.synthesizer.Session')
     @patch.object(Synthesizer, '_generate_fast_tts')
     def test_routing_text_only(self, mock_method, mock_session_class):
         """Verify JanusMode.TEXT_ONLY routes to _generate_fast_tts."""
@@ -122,7 +121,7 @@ class TestSynthesizerRouting:
         mock_method.assert_called_once_with("Hello")
         assert result == mock_audio_bytes
     
-    @patch('fish_audio_sdk.Session')
+    @patch('services.synthesizer.Session')
     @patch.object(Synthesizer, '_generate_morse_audio')
     def test_routing_morse_code(self, mock_method, mock_session_class):
         """Verify JanusMode.MORSE_CODE routes to _generate_morse_audio."""
@@ -155,9 +154,9 @@ class TestSynthesizerRouting:
 class TestPromptConstruction:
     """Tests for emotion prompt construction."""
     
-    @patch('fish_audio_sdk.Session')
-    @patch('fish_audio_sdk.TTSRequest')
-    @patch('fish_audio_sdk.ReferenceAudio')
+    @patch('services.synthesizer.Session')
+    @patch('services.synthesizer.TTSRequest')
+    @patch('services.synthesizer.ReferenceAudio')
     def test_prompt_construction(self, mock_ref_audio_class, mock_tts_request_class, mock_session_class):
         """Verify override_emotion='Excited' creates prompt starting with '[Excited]'."""
         mock_session = MagicMock()
@@ -195,7 +194,7 @@ class TestPromptConstruction:
 class TestMorseCodeGeneration:
     """Tests for Morse code audio generation."""
     
-    @patch('fish_audio_sdk.Session')
+    @patch('services.synthesizer.Session')
     def test_morse_code_generation(self, mock_session_class):
         """Verify JanusMode.MORSE_CODE returns bytes and 'SOS' generates correct duration."""
         mock_session = MagicMock()
@@ -245,29 +244,31 @@ class TestMorseCodeGeneration:
 class TestAPIFailureFallback:
     """Tests for API failure fallback logic."""
     
-    def test_api_failure_fallback(self):
+    @patch('services.synthesizer.Session')
+    @patch.object(Synthesizer, '_generate_fast_tts')
+    def test_api_failure_fallback(self, mock_fallback_method, mock_session_class):
         """Verify fallback to _generate_fast_tts when Fish Audio API raises exception."""
-        with patch('fish_audio_sdk.Session') as mock_session_class:
-            mock_session = MagicMock()
-            mock_session_class.return_value = mock_session
-            
-            synthesizer = Synthesizer(api_key="test_key")
-            
-            # Make API raise an exception using patch.object
-            with patch.object(mock_session, 'synthesize', side_effect=Exception("API Error")):
-                # Mock the fast TTS fallback using patch.object
-                mock_fallback_audio = b'fallback audio'
-                with patch.object(synthesizer, '_generate_fast_tts', return_value=mock_fallback_audio) as mock_fallback:
-                    # Create packet with SEMANTIC_VOICE mode
-                    packet = JanusPacket(
-                        text="Hello",
-                        mode=JanusMode.SEMANTIC_VOICE,
-                        prosody={'energy': 'Normal', 'pitch': 'Normal'}
-                    )
-                    
-                    result = synthesizer._generate_semantic_audio(packet)
-                    
-                    # Verify fallback was called
-                    mock_fallback.assert_called_once_with("Hello")
-                    assert result == mock_fallback_audio
+        mock_session = MagicMock()
+        mock_session_class.return_value = mock_session
+        
+        # Make API raise an exception
+        mock_session.synthesize.side_effect = Exception("API Error")
+        
+        mock_fallback_audio = b'fallback audio'
+        mock_fallback_method.return_value = mock_fallback_audio
+        
+        synthesizer = Synthesizer(api_key="test_key")
+        
+        # Create packet with SEMANTIC_VOICE mode
+        packet = JanusPacket(
+            text="Hello",
+            mode=JanusMode.SEMANTIC_VOICE,
+            prosody={'energy': 'Normal', 'pitch': 'Normal'}
+        )
+        
+        result = synthesizer._generate_semantic_audio(packet)
+        
+        # Verify fallback was called
+        mock_fallback_method.assert_called_once_with("Hello")
+        assert result == mock_fallback_audio
 
