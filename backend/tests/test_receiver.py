@@ -40,10 +40,10 @@ def send_test_packet(text, mode, tcp=False, prosody=None, override_emotion=None)
     # Serialize packet
     serialized_bytes = packet.serialize()
     
-    # Determine target address
-    target_ip = "127.0.0.1"
-    target_port = 5005
-    
+    # Determine target address (Read from ENV or default to localhost)
+    target_ip = os.getenv("TARGET_IP", "127.0.0.1")
+    target_port = int(os.getenv("TARGET_PORT", 5005))
+
     if tcp:
         # TCP mode: connect and send with length prefix
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
