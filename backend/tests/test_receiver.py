@@ -85,7 +85,7 @@ if __name__ == "__main__":
     send_test_packet(
         text="Hello World",
         mode=JanusMode.SEMANTIC_VOICE,
-        tcp=False
+        tcp=use_tcp
     )
     
     print("\nTest packet sent successfully!")
