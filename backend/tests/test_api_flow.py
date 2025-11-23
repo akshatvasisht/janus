@@ -1,4 +1,5 @@
 import pytest
+import time
 from fastapi.testclient import TestClient
 from backend.server import app
 from backend.common import engine_state
@@ -30,6 +31,9 @@ def test_websocket_control_flow():
             "is_streaming": True,
             "mode": "text_only"
         })
+
+        # Wait for async message processing to complete
+        time.sleep(0.1)
 
         # 3. Verify State Update
         assert engine_state.control_state.is_streaming is True
