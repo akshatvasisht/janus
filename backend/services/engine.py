@@ -5,11 +5,8 @@ import time
 import numpy as np
 import logging
 import os
-<<<<<<< HEAD
 import socket
 import struct
-=======
->>>>>>> main
 from concurrent.futures import ThreadPoolExecutor
 
 from ..common import engine_state
@@ -23,15 +20,11 @@ from .vad import VoiceActivityDetector
 from .transcriber import Transcriber
 from .prosody import ProsodyExtractor
 from .link_simulator import LinkSimulator
-<<<<<<< HEAD
 from .synthesizer import Synthesizer
-=======
->>>>>>> main
 
 logger = logging.getLogger(__name__)
 
 
-<<<<<<< HEAD
 def recv_exact(sock, n):
     """
     Helper function to receive exactly n bytes from a socket.
@@ -239,8 +232,6 @@ def receiver_loop(audio_service, stop_event):
         logger.info("Receiver loop shutdown complete.")
 
 
-=======
->>>>>>> main
 def map_api_mode_to_protocol_mode(api_mode: JanusMode) -> ProtocolJanusMode:
     """
     Map API JanusMode (string enum) to Protocol JanusMode (int enum).
@@ -473,11 +464,7 @@ async def smart_ear_loop(
     finally:
         stop_event.set()
         producer_thread.join(timeout=2)
-<<<<<<< HEAD
         # audio_service.close() is now handled by server.py
-=======
-        audio_service.close()
->>>>>>> main
         if 'link_simulator' in locals():
             link_simulator.close()
         executor.shutdown(wait=False)
