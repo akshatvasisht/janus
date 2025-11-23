@@ -9,12 +9,12 @@ import sys
 import os
 import io
 
-# Add backend to path for imports (for Synthesizer tests)
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+# Add project root to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
 from fastapi.testclient import TestClient
 from backend.server import app
-from services.synthesizer import Synthesizer
+from backend.services.synthesizer import Synthesizer
 
 
 # ============================================================================
@@ -90,12 +90,12 @@ class TestVoiceVerificationAPI:
 # Synthesizer Hot-Reload Tests
 # ============================================================================
 
-@patch('services.synthesizer.FishAudio')
+@patch('backend.services.synthesizer.FishAudio')
 class TestSynthesizerHotReload:
     """Tests for Synthesizer hot-reload functionality."""
     
-    @patch('services.synthesizer.os.path.getmtime')
-    @patch('services.synthesizer.os.path.exists')
+    @patch('backend.services.synthesizer.os.path.getmtime')
+    @patch('backend.services.synthesizer.os.path.exists')
     @patch('builtins.open', new_callable=mock_open)
     def test_hot_reload_trigger(self, mock_file_open, mock_exists, mock_getmtime, mock_client_class):
         """Test that hot-reload correctly detects file changes and caches reads."""

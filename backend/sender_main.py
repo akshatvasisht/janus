@@ -11,12 +11,12 @@ import numpy as np
 import time
 import os
 
-from services.audio_io import AudioService
-from services.vad import VoiceActivityDetector
-from services.transcriber import Transcriber
-from services.prosody import ProsodyExtractor
-from common.protocol import JanusPacket, JanusMode
-from services.link_simulator import LinkSimulator
+from backend.services.audio_io import AudioService
+from backend.services.vad import VoiceActivityDetector
+from backend.services.transcriber import Transcriber
+from backend.services.prosody import ProsodyExtractor
+from backend.common.protocol import JanusPacket, JanusMode
+from backend.services.link_simulator import LinkSimulator
 
 def audio_producer(audio_service, audio_queue, stop_event):
     """
