@@ -31,10 +31,16 @@ SAMPLE_RATE = 44100  # Hz
 class TestSynthesizerInit:
     """Tests for Synthesizer initialization."""
     
-    def test_init_loads_reference(self, mock_client_class):
+    @patch('services.synthesizer.os.path.exists')
+    @patch('services.synthesizer.os.path.getmtime')
+    def test_init_loads_reference(self, mock_mtime, mock_exists, mock_client_class):
         """Verify reference audio file is read as bytes when path provided."""
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
+        
+        # Set up mocks for file system operations
+        mock_exists.return_value = True
+        mock_mtime.return_value = 12345.0
         
         # Mock file content
         fake_audio_bytes = b'fake audio data'
@@ -119,7 +125,7 @@ class TestSynthesizerRouting:
         result = synthesizer.synthesize(packet)
         
         # Verify _generate_fast_tts was called
-        mock_method.assert_called_once_with("Hello")
+        mock_method.assert_called_once_with("Hello", "Auto")
         assert result == mock_audio_bytes
     
     @patch('services.synthesizer.FishAudio')
@@ -304,6 +310,6 @@ class TestAPIFailureFallback:
         result = synthesizer._generate_semantic_audio(packet)
         
         # Verify fallback was called
-        mock_fallback_method.assert_called_once_with("Hello")
+        mock_fallback_method.assert_called_once_with("Hello", "Auto")
         assert result == mock_fallback_audio
 
