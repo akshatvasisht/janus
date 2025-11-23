@@ -76,8 +76,12 @@ def send_test_packet(text, mode, tcp=False, prosody=None, override_emotion=None)
 
 
 if __name__ == "__main__":
-    # Send a "Hello World" packet via UDP by default
-    print("Sending test packet: 'Hello World' (SEMANTIC_VOICE mode, UDP)")
+    # Check if we are in TCP mode (e.g. for Ngrok)
+    use_tcp = os.getenv("USE_TCP", "False").lower() == "true"
+
+    print(f"Configuration: TCP={use_tcp}")
+
+    print("Sending test packet: 'Hello World'")
     send_test_packet(
         text="Hello World",
         mode=JanusMode.SEMANTIC_VOICE,
