@@ -32,7 +32,7 @@ class TestJanusPacket:
             text="Hello world",
             mode=JanusMode.SEMANTIC_VOICE,
             prosody={'energy': 'Normal', 'pitch': 'High'},
-            override_emotion="Calm",
+            override_emotion="Relaxed",
             timestamp=1234567890.0
         )
         
@@ -57,7 +57,7 @@ class TestJanusPacket:
             text="test",
             mode=JanusMode.TEXT_ONLY,
             prosody={'energy': 'Loud', 'pitch': 'Deep'},
-            override_emotion="Urgent"
+            override_emotion="Panicked"
         )
         
         data_dict = packet.to_dict()
@@ -80,7 +80,7 @@ class TestJanusPacket:
         assert data_dict['t'] == "test"
         assert data_dict['m'] == 1  # TEXT_ONLY = 1
         assert data_dict['p'] == {'energy': 'Loud', 'pitch': 'Deep'}
-        assert data_dict['o'] == "Urgent"
+        assert data_dict['o'] == "Panicked"
     
     def test_override_emotion(self):
         """Verify 'Auto' is omitted from dict (optimization), but other values are included."""
@@ -95,7 +95,7 @@ class TestJanusPacket:
         assert 'o' not in dict_auto  # Should be omitted
         
         # Test with other values (should be included)
-        for emotion in ["Calm", "Urgent", "Happy"]:
+        for emotion in ["Relaxed", "Panicked", "Joyful"]:
             packet = JanusPacket(
                 text="test",
                 mode=JanusMode.SEMANTIC_VOICE,
@@ -121,7 +121,7 @@ class TestJanusPacket:
             't': 'reconstructed text',
             'm': 2,  # MORSE_CODE
             'p': {'energy': 'Quiet', 'pitch': 'Normal'},
-            'o': 'Happy',
+            'o': 'Joyful',
             'ts': 9999999999.0
         }
         
@@ -130,7 +130,7 @@ class TestJanusPacket:
         assert packet.text == 'reconstructed text'
         assert packet.mode == JanusMode.MORSE_CODE
         assert packet.prosody == {'energy': 'Quiet', 'pitch': 'Normal'}
-        assert packet.override_emotion == 'Happy'
+        assert packet.override_emotion == 'Joyful'
         assert packet.timestamp == 9999999999.0
     
     def test_timestamp_default(self):

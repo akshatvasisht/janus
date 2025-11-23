@@ -33,7 +33,7 @@ class JanusPacket:
             text: The transcribed text content (str)
             mode: Transmission mode (JanusMode enum)
             prosody: Prosody metadata dictionary (dict with 'energy' and 'pitch')
-            override_emotion: Optional override emotion (str: "Auto", "Calm", "Urgent", "Happy")
+            override_emotion: Optional override emotion (str: "Auto", "Relaxed", "Panicked")
             timestamp: Optional timestamp (float). If None, uses current time.
         """
         self.text = text

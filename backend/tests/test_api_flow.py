@@ -44,10 +44,10 @@ def test_websocket_partial_update():
         # Send partial update (only emotion_override)
         websocket.send_json({
             "type": "control",
-            "emotion_override": "urgent"
+            "emotion_override": "panicked"
         })
 
         # Verify only target field changed
-        assert engine_state.control_state.emotion_override == "urgent"
+        assert engine_state.control_state.emotion_override == "panicked"
         # Should remain False
         assert engine_state.control_state.is_recording is False

@@ -36,7 +36,7 @@ export default function ConversationPanel({ transcripts }: ConversationPanelProp
               />
               <Badge 
                 label={lastMessage.emotionOverride !== 'auto' ? `Forced: ${lastMessage.emotionOverride}` : (lastMessage.inferredEmotion || 'Auto')}
-                color={lastMessage.emotionOverride === 'urgent' ? 'red' : 'cyan'}
+                color={lastMessage.emotionOverride === 'panicked' ? 'red' : 'cyan'}
               />
             </div>
           </div>
