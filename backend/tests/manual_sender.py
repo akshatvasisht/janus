@@ -3,15 +3,14 @@ Manual Integration Tool for Testing Receiver
 Sends test packets to the running receiver for manual testing.
 """
 
+import os
 import socket
 import struct
 import sys
-import os
 
-# Add backend to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from common.protocol import JanusPacket, JanusMode
+from common.protocol import JanusMode, JanusPacket
 
 
 def send_test_packet(text, mode, tcp=False, prosody=None, override_emotion=None):
@@ -19,11 +18,14 @@ def send_test_packet(text, mode, tcp=False, prosody=None, override_emotion=None)
     Send a test packet to the receiver.
     
     Args:
-        text: Text content for the packet
-        mode: JanusMode enum value (SEMANTIC_VOICE, TEXT_ONLY, MORSE_CODE)
-        tcp: If True, use TCP; if False, use UDP
-        prosody: Optional prosody dictionary (default: {'energy': 'Normal', 'pitch': 'Normal'})
-        override_emotion: Optional override emotion (default: "Auto")
+        text: Text content for the packet.
+        mode: JanusMode enum value (SEMANTIC_VOICE, TEXT_ONLY, MORSE_CODE).
+        tcp: If True, use TCP; if False, use UDP.
+        prosody: Optional prosody dictionary. Defaults to {'energy': 'Normal', 'pitch': 'Normal'}.
+        override_emotion: Optional override emotion. Defaults to "Auto".
+    
+    Returns:
+        None
     """
     # Default prosody if not provided
     if prosody is None:

@@ -54,10 +54,11 @@ class JanusPacket:
     def to_dict(self) -> dict:
         """
         Convert class attributes into a raw dictionary for serialization.
+        
         Uses short keys to minimize payload size.
         
         Returns:
-            dict: Dictionary with compact keys ('t', 'm', 'p', 'o', 'ts')
+            dict: Dictionary with compact keys ('t', 'm', 'p', 'o', 'ts').
         """
         result = {
             't': self.text,
@@ -94,10 +95,11 @@ class JanusPacket:
     def serialize(self) -> bytes:
         """
         Convert the Packet object into a compact binary byte string.
+        
         Uses MessagePack for efficient serialization.
         
         Returns:
-            bytes: Compact binary payload
+            bytes: Compact binary payload.
         """
         data_dict = self.to_dict()
         return msgpack.packb(data_dict, use_bin_type=True)

@@ -6,10 +6,11 @@ Purpose: Simulates the physics of a 300bps connection.
          and sleeps for that duration, visualizing the 'upload' in the terminal.
 """
 
-import socket
-import time
-import struct
+# Standard library imports
 import os
+import socket
+import struct
+import time
 
 
 # Constants
@@ -33,6 +34,9 @@ class LinkSimulator:
             target_port: Target port number. Default is 5005.
             use_tcp: Whether to use TCP instead of UDP. Default is False.
                 TCP mode uses length-prefixed framing for stream-oriented protocol.
+        
+        Returns:
+            None
         """
         self.target_ip = target_ip
         self.target_port = target_port
@@ -47,6 +51,9 @@ class LinkSimulator:
         Creates and connects the appropriate socket type. For TCP, attempts to
         connect to the target address. Connection errors are logged but do not
         raise exceptions.
+        
+        Returns:
+            None
         """
         if self.use_tcp:
             # TCP socket (SOCK_STREAM)
@@ -71,6 +78,9 @@ class LinkSimulator:
         Args:
             payload_bytes: Binary payload (bytes) - the msgpack serialized packet.
                 For TCP mode, a 4-byte length prefix is automatically added.
+        
+        Returns:
+            None
         """
         # TCP Framing: Add 4-byte length prefix for TCP mode
         if self.use_tcp:
@@ -113,8 +123,11 @@ class LinkSimulator:
         Args:
             duration: Duration in seconds to simulate. Progress bar is divided
                 into 20 steps for smooth visualization.
+        
+        Returns:
+            None
         """
-        num_steps = 20  # Number of progress bar ticks
+        num_steps = 20
         tick_time = duration / num_steps
         
         for i in range(num_steps):
@@ -129,6 +142,9 @@ class LinkSimulator:
         
         Closes the socket if it exists and resets it to None. Safe to call
         multiple times.
+        
+        Returns:
+            None
         """
         if self.socket:
             self.socket.close()

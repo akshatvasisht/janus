@@ -9,13 +9,16 @@ Purpose: The 'Brain' of the receiver. It converts the received 'JanusPacket'
          4. Sine wave generation for Morse Code (Stretch Goal).
 """
 
+# Standard library imports
 import os
 from pathlib import Path
 
+# Third-party imports
 import numpy as np
 from fishaudio import FishAudio
 from fishaudio.types import ReferenceAudio
 
+# Local imports
 from ..common.protocol import JanusMode, JanusPacket
 
 # Audio format constants
@@ -37,27 +40,23 @@ class Synthesizer:
             reference_audio_path: Optional path to reference audio file for
                 voice cloning. If None, uses default path 'backend/reference_audio.wav'.
                 The reference audio serves as the "Voice ID" for cloning.
+        
+        Returns:
+            None
         """
-        # Initialize Fish Audio SDK client (new API)
         self.client = FishAudio(api_key=api_key)
         
-        # Initialize attribute to ensure proper state before use
         self.reference_audio_bytes = None
         self._reference_audio_mtime = None
         self._reference_audio_path = None
         
-        # Determine reference audio path (always store target path, even if file doesn't exist yet)
-        # Prefer environment variable, otherwise use default path in backend directory
         if reference_audio_path:
             audio_path = reference_audio_path
         else:
-            # Always use default path in backend directory (even if file doesn't exist yet)
             backend_dir = Path(__file__).parent.parent
             default_path = backend_dir / "reference_audio.wav"
             audio_path = str(default_path)
         
-        # Always set the target path and try to load reference audio
-        # This allows hot-reload to work even if file doesn't exist at startup
         self._reference_audio_path = audio_path
         self._load_reference_audio(audio_path)
         
@@ -79,23 +78,22 @@ class Synthesizer:
         
         Args:
             audio_path: Path to the reference audio file.
+        
+        Returns:
+            None
         """
         try:
             if os.path.exists(audio_path):
                 with open(audio_path, 'rb') as f:
                     self.reference_audio_bytes = f.read()
                 self._reference_audio_mtime = os.path.getmtime(audio_path)
-                # Note: _reference_audio_path is already set in __init__, don't overwrite it
             else:
-                # File doesn't exist yet, but keep the path for future hot-reload checks
                 self.reference_audio_bytes = None
                 self._reference_audio_mtime = None
-                # Keep _reference_audio_path set so hot-reload can detect when file appears
         except Exception as e:
             print(f"Warning: Could not load reference audio from {audio_path}: {e}")
             self.reference_audio_bytes = None
             self._reference_audio_mtime = None
-            # Keep _reference_audio_path set even on error for future retries
     
     def _check_and_reload_reference_audio(self) -> None:
         """
@@ -103,15 +101,15 @@ class Synthesizer:
         
         This enables hot-reload without server restart. Also detects if file
         appears for the first time (wasn't present at startup).
+        
+        Returns:
+            None
         """
         if self._reference_audio_path:
             if os.path.exists(self._reference_audio_path):
-                # File exists - check if it's new or has been modified
                 current_mtime = os.path.getmtime(self._reference_audio_path)
                 if self._reference_audio_mtime is None or self._reference_audio_mtime != current_mtime:
-                    # File is new or has changed, reload it
                     self._load_reference_audio(self._reference_audio_path)
-            # If file doesn't exist yet, do nothing (will be checked again on next call)
 
     def synthesize(self, packet: JanusPacket) -> bytes:
         """
@@ -202,7 +200,7 @@ class Synthesizer:
             
             api_params = {
                 "text": prompt,
-                "format": "wav",  # Changed from "pcm" - wav contains PCM data
+                "format": "wav",
                 "latency": "balanced"
             }
             
@@ -248,16 +246,14 @@ class Synthesizer:
             # Build API call parameters
             api_params = {
                 "text": prompt,
-                "format": "wav",  # Changed from "pcm" - wav contains PCM data
+                "format": "wav",
                 "latency": "balanced"
             }
             
-            # Use cloned voice if available, otherwise use generic voice
             if self.reference_audio_bytes:
-                # Use cloned voice with references parameter
                 api_params["references"] = [ReferenceAudio(
                     audio=self.reference_audio_bytes,
-                    text=""  # Reference transcript not available, using empty string
+                    text=""
                 )]
             else:
                 # Fall back to generic voice (no reference)

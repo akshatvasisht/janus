@@ -46,6 +46,7 @@ def playback_worker(
 ) -> None:
     """
     Playback thread worker function.
+    
     Continuously pulls audio bytes from queue and plays them.
     Prevents blocking the main receiver loop.
     
@@ -54,6 +55,9 @@ def playback_worker(
         playback_queue: Queue containing audio bytes to play.
         stop_event: Threading event to signal shutdown. Worker exits when
             this event is set.
+    
+    Returns:
+        None
     """
     while not stop_event.is_set():
         try:
@@ -79,6 +83,9 @@ def receiver_loop() -> None:
     Listens for incoming packets, deserializes JanusPackets, synthesizes audio,
     and plays it through the audio service. Supports both TCP and UDP protocols.
     Configuration is loaded from environment variables.
+    
+    Returns:
+        None
     
     Raises:
         ValueError: If FISH_AUDIO_API_KEY environment variable is not set.

@@ -4,6 +4,10 @@ Purpose: Uses Aubio to extract the 'Emotional Metadata' (Pitch and Energy)
          from the audio signal. This allows the receiver to 'hallucinate' the tone.
 """
 
+# Standard library imports
+# (none)
+
+# Third-party imports
 import aubio
 import numpy as np
 
@@ -21,6 +25,9 @@ class ProsodyExtractor:
             hop_size: Analysis hop size in samples. Default is 512 samples.
                 Smaller values provide higher temporal resolution at the cost
                 of increased computation.
+        
+        Returns:
+            None
         """
         self.sample_rate = sample_rate
         self.hop_size = hop_size

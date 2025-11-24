@@ -4,8 +4,11 @@ Purpose: Converts raw audio buffers into text using Faster-Whisper.
          Optimized for CPU usage with Int8 quantization.
 """
 
-import numpy as np
+# Standard library imports
+# (none)
 
+# Third-party imports
+import numpy as np
 from faster_whisper import WhisperModel
 
 class Transcriber:
@@ -39,25 +42,16 @@ class Transcriber:
         Returns:
             str: Transcribed text string with whitespace normalized.
                 Returns empty string if no speech is detected.
-        
-        Note:
-            Uses greedy search (beam_size=1) for lowest latency. Audio is
-            downsampled from 44.1kHz to 16kHz by taking every 3rd sample.
         """
-        # Ensure audio is float32 numpy array
         if isinstance(audio_buffer, list):
             audio_buffer = np.concatenate(audio_buffer)
         
         if not isinstance(audio_buffer, np.ndarray):
             audio_buffer = np.array(audio_buffer, dtype=np.float32)
         
-        # Ensure float32 format
         if audio_buffer.dtype != np.float32:
             audio_buffer = audio_buffer.astype(np.float32)
         
-        # Downsample 44.1k to 16k logic
-        # Ideally use scipy.signal.resample if available, otherwise slicing [::3] is an acceptable fallback for speed.
-        # Assuming input is 44100 Hz, downsample by taking every 3rd sample (44100/3 ≈ 14700 Hz, close enough to 16k)
         audio_16k = audio_buffer[::3]
         
         # Transcribe with beam_size=1 for lowest latency

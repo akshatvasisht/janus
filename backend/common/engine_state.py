@@ -40,6 +40,12 @@ packet_queue: Optional[asyncio.Queue] = None
 
 
 def get_transcript_queue() -> asyncio.Queue:
+    """
+    Get or create the transcript queue for emitting transcript messages.
+    
+    Returns:
+        asyncio.Queue: Queue for transcript messages.
+    """
     global transcript_queue
     if transcript_queue is None:
         transcript_queue = asyncio.Queue()
@@ -47,6 +53,12 @@ def get_transcript_queue() -> asyncio.Queue:
 
 
 def get_packet_queue() -> asyncio.Queue:
+    """
+    Get or create the packet queue for emitting packet summary messages.
+    
+    Returns:
+        asyncio.Queue: Queue for packet summary messages.
+    """
     global packet_queue
     if packet_queue is None:
         packet_queue = asyncio.Queue()
@@ -54,7 +66,14 @@ def get_packet_queue() -> asyncio.Queue:
 
 
 def reset_queues() -> None:
-    """Helper for tests to reset queues between runs"""
+    """
+    Reset queues for testing purposes.
+    
+    Helper function for tests to reset queues between test runs.
+    
+    Returns:
+        None
+    """
     global transcript_queue, packet_queue
     transcript_queue = asyncio.Queue()
     packet_queue = asyncio.Queue()

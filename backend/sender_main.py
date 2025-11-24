@@ -26,12 +26,16 @@ def audio_producer(
 ) -> None:
     """
     Thread A (Producer - "The Ear"): Continuously reads audio chunks and puts them in queue.
+    
     Never stops reading to prevent PyAudio buffer overflow.
     
     Args:
         audio_service: AudioService instance for reading audio input.
         audio_queue: Queue for storing audio chunks (numpy arrays).
         stop_event: Threading event to signal shutdown. Producer exits when set.
+    
+    Returns:
+        None
     """
     while not stop_event.is_set():
         try:
@@ -64,6 +68,9 @@ def audio_consumer(
         link_simulator: LinkSimulator instance for packet transmission.
         audio_queue: Queue containing audio chunks (numpy arrays) to process.
         stop_event: Threading event to signal shutdown. Consumer exits when set.
+    
+    Returns:
+        None
     """
     is_streaming_mode = True
     is_recording_hold = False
@@ -168,6 +175,9 @@ def main_loop() -> None:
     Initializes audio processing services and sets up producer-consumer threads
     for continuous audio capture and processing. Manages application lifecycle
     and graceful shutdown on interrupt.
+    
+    Returns:
+        None
     """
     print("Initializing services...")
     audio_service = AudioService()

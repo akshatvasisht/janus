@@ -1,3 +1,4 @@
+# Standard library imports
 import asyncio
 import logging
 import os
@@ -9,8 +10,10 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
+# Third-party imports
 import numpy as np
 
+# Local imports
 from ..api.types import JanusMode, PacketSummaryMessage, TranscriptMessage
 from ..common import engine_state
 from ..common.protocol import JanusMode as ProtocolJanusMode, JanusPacket
@@ -67,6 +70,9 @@ def playback_worker(
         playback_queue: Queue containing audio bytes to play.
         stop_event: Threading event to signal shutdown. Worker exits when
             this event is set.
+    
+    Returns:
+        None
     """
     while not stop_event.is_set():
         try:
@@ -100,6 +106,9 @@ def receiver_loop(
         audio_service: Shared AudioService instance for playback.
         stop_event: Threading event to signal shutdown. Loop exits when set.
         event_loop: asyncio event loop for emitting events to frontend.
+    
+    Returns:
+        None
     """
     api_key = os.getenv("FISH_AUDIO_API_KEY")
     if not api_key:
@@ -310,6 +319,9 @@ def audio_producer(
         audio_service: AudioService instance for reading audio input.
         audio_queue: Queue for storing audio chunks (numpy arrays).
         stop_event: Threading event to signal shutdown. Producer exits when set.
+    
+    Returns:
+        None
     """
     while not stop_event.is_set():
         try:
@@ -342,6 +354,9 @@ async def smart_ear_loop(
         transcript_queue: Async queue for emitting transcript messages to frontend.
         packet_queue: Async queue for emitting packet summary messages to frontend.
         audio_service: Shared AudioService instance for audio input capture.
+    
+    Returns:
+        None
     """
         print("Initializing Smart Ear services...")
 
@@ -497,6 +512,20 @@ async def _emit_events(
     transcript_queue: "asyncio.Queue[TranscriptMessage]",
     packet_queue: "asyncio.Queue[PacketSummaryMessage]",
 ) -> None:
+    """
+    Emit transcript and packet summary events to frontend queues.
+    
+    Args:
+        text: Transcribed text content.
+        avg_pitch_hz: Average pitch in Hz, or None if not available.
+        avg_energy: Average energy level, or None if not available.
+        mode: JanusMode transmission mode.
+        transcript_queue: Async queue for transcript messages.
+        packet_queue: Async queue for packet summary messages.
+    
+    Returns:
+        None
+    """
     now_ms = int(time.time() * 1000)
 
     transcript_msg = TranscriptMessage(

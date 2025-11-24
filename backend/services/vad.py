@@ -4,8 +4,8 @@ Purpose: Acts as the 'Gatekeeper'. Uses Silero-VAD to analyze audio chunks
          and determine if they contain human speech or just background noise.
 """
 
-import torch
 import numpy as np
+import torch
 
 class VoiceActivityDetector:
     def __init__(self, threshold: float = 0.5, sample_rate: int = 44100) -> None:
@@ -48,14 +48,7 @@ class VoiceActivityDetector:
         Returns:
             bool: True if speech is detected (probability exceeds threshold),
                 False otherwise.
-
-        Note:
-            Audio is downsampled from 44.1kHz to approximately 16kHz by taking
-            every 3rd sample. This lightweight approach avoids heavy resampling
-            libraries while maintaining acceptable accuracy for VAD.
         """
-        # Downsample 44100 -> ~14700 (close enough for VAD) by taking every 3rd sample
-        # Lightweight downsampling approach to avoid heavy resampling dependencies.
         if self.sample_rate == 44100:
             audio_chunk = audio_chunk[::3]
             vad_sample_rate = 16000  # Silero VAD expects 16k
@@ -86,6 +79,4 @@ class VoiceActivityDetector:
         Useful between distinct conversation turns. Silero VAD v4 is stateless,
         so this method is a no-op but maintained for API consistency.
         """
-        # Silero VAD v4 is stateless, so this is a no-op
-        # But we keep the method for API consistency
         pass

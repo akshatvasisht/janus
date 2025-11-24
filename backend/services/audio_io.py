@@ -5,9 +5,12 @@ Purpose: Handles the raw interface with the microphone and speakers using PyAudi
          which are required for AI processing.
 """
 
+# Standard library imports
 import logging
 import warnings
+from typing import Union
 
+# Third-party imports
 import numpy as np
 import pyaudio
 
@@ -24,6 +27,9 @@ class AudioService:
         
         Gracefully handles hardware unavailability by running in silent/mock mode
         if initialization fails.
+        
+        Returns:
+            None
         """
         # Audio configuration constants
         self.SAMPLE_RATE = 44100
@@ -132,7 +138,7 @@ class AudioService:
         
         return audio_float32
 
-    def write_chunk(self, audio_data) -> None:
+    def write_chunk(self, audio_data: Union[bytes, np.ndarray, None]) -> None:
         """
         Plays a chunk of audio out to the speakers.
         
@@ -144,6 +150,9 @@ class AudioService:
             audio_data: Audio data as bytes or numpy array (float32 normalized
                 between -1.0 and 1.0, or int16). If None or hardware unavailable,
                 the operation is silently skipped.
+        
+        Returns:
+            None
         """
         if not self._pyaudio_available or self.output_stream is None:
             # Skip writing if no hardware is available or output stream failed to initialize
