@@ -75,10 +75,14 @@ def playback_worker(
 
 def receiver_loop() -> None:
     """
-    Main entry point for receiver loop.
+    Main receiver loop entry point.
     
-    Orchestrates the listening loop, packet deserialization, synthesis, and playback.
-    Loads configuration from environment variables and initializes required services.
+    Listens for incoming packets, deserializes JanusPackets, synthesizes audio,
+    and plays it through the audio service. Supports both TCP and UDP protocols.
+    Configuration is loaded from environment variables.
+    
+    Raises:
+        ValueError: If FISH_AUDIO_API_KEY environment variable is not set.
     """
     # Load environment variables
     load_dotenv()
@@ -186,7 +190,7 @@ def receiver_loop() -> None:
                 mode_name = mode_names.get(packet.mode, "Unknown")
                 
                 # Print visualization
-                print(f"📥 RECEIVED: [{mode_name}] '{packet.text}'")
+                print(f"[RECEIVED] [{mode_name}] '{packet.text}'")
                 print(f"   Meta: Energy={packet.prosody.get('energy', 'N/A')}, "
                       f"Pitch={packet.prosody.get('pitch', 'N/A')} -> Prompt: [{emotion_tag}]")
 

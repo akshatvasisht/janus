@@ -1,19 +1,16 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import logging
 import threading
 from contextlib import asynccontextmanager
 
-# API Routers
-# Note: Using relative imports assuming this file is run as a module (e.g. uvicorn backend.server:app)
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 from .api.endpoints import router as api_router
 from .api.socket_manager import router as ws_router
-
-# Engine & State
 from .common import engine_state
-from .services.engine import smart_ear_loop, receiver_loop
 from .services.audio_io import AudioService
+from .services.engine import receiver_loop, smart_ear_loop
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

@@ -14,7 +14,6 @@ import numpy as np
 from ..api.types import JanusMode, PacketSummaryMessage, TranscriptMessage
 from ..common import engine_state
 from ..common.protocol import JanusMode as ProtocolJanusMode, JanusPacket
-
 from .audio_io import AudioService
 from .link_simulator import LinkSimulator
 from .prosody import ProsodyExtractor
@@ -157,12 +156,9 @@ def receiver_loop(
     try:
         while not stop_event.is_set():
             try:
-                # A. RECEIVE DATA (Strict TCP Framing)
-                # Read 4-byte big-endian length prefix first
                 try:
                     length_bytes = recv_exact(sock, 4)
                 except socket.timeout:
-                    # If nothing was received within 1.0 second, just continue the loop
                     continue
                 
                 if length_bytes is None:
@@ -171,18 +167,14 @@ def receiver_loop(
                 
                 payload_length = struct.unpack('>I', length_bytes)[0]
                 
-                # Read the full packet
                 try:
                     data = recv_exact(sock, payload_length)
                 except socket.timeout:
-                    # If nothing was received within 1.0 second, just continue the loop
                     continue
                 
                 if data is None:
                     logger.info("Connection closed while reading packet")
                     break
-
-                # B. DESERIALIZE
                 try:
                     packet = JanusPacket.deserialize(data)
                 except Exception as e:
@@ -195,16 +187,13 @@ def receiver_loop(
                     transcript_queue = engine_state.get_transcript_queue()
                     packet_queue = engine_state.get_packet_queue()
                     
-                    # Map protocol mode to API mode
                     api_mode = map_protocol_mode_to_api_mode(packet.mode)
                     
-                    # Extract numeric values from prosody if available
                     prosody = packet.prosody or {}
                     avg_pitch_hz = prosody.get('avg_pitch_hz') if isinstance(prosody.get('avg_pitch_hz'), (int, float)) else None
                     avg_energy = prosody.get('avg_energy') if isinstance(prosody.get('avg_energy'), (int, float)) else None
                     
-                    # Emit events asynchronously using the event loop
-                    future = asyncio.run_coroutine_threadsafe(
+                    asyncio.run_coroutine_threadsafe(
                         _emit_events(
                             text=packet.text,
                             avg_pitch_hz=avg_pitch_hz,
@@ -215,17 +204,12 @@ def receiver_loop(
                         ),
                         event_loop
                     )
-                    # Don't wait for completion - fire and forget to avoid blocking
                 except Exception as e:
                     logger.error(f"Failed to emit events to frontend: {e}")
-                    # Continue processing even if event emission fails
 
-                # C. VISUALIZE (The "Terminal Dashboard")
-                # Determine emotion tag for display
                 if packet.override_emotion != "Auto":
                     emotion_tag = packet.override_emotion
                 else:
-                    # Map prosody to emotion (same logic as synthesizer)
                     prosody = packet.prosody
                     pitch = prosody.get('pitch', 'Normal')
                     energy = prosody.get('energy', 'Normal')
@@ -241,7 +225,6 @@ def receiver_loop(
                     else:
                         emotion_tag = 'Neutral'
                 
-                # Mode name mapping
                 mode_names = {
                     ProtocolJanusMode.SEMANTIC_VOICE: "Semantic Voice",
                     ProtocolJanusMode.TEXT_ONLY: "Text Only",
@@ -249,32 +232,25 @@ def receiver_loop(
                 }
                 mode_name = mode_names.get(packet.mode, "Unknown")
                 
-                # Print visualization
-                print(f"📥 RECEIVED: [{mode_name}] '{packet.text}'")
+                print(f"[RECEIVED] [{mode_name}] '{packet.text}'")
                 print(f"   Meta: Energy={packet.prosody.get('energy', 'N/A')}, "
                       f"Pitch={packet.prosody.get('pitch', 'N/A')} -> Prompt: [{emotion_tag}]")
 
-                # D. SYNTHESIZE (The "Brain")
                 try:
                     audio_bytes = synthesizer.synthesize(packet)
                 except Exception as e:
                     logger.error(f"Synthesis error: {e}")
                     continue
 
-                # E. PLAYBACK (The "Mouth")
-                # Push to playback queue (non-blocking)
                 try:
                     playback_queue.put(audio_bytes, timeout=0.1)
                 except queue.Full:
                     logger.warning("Warning: Playback queue full, skipping audio chunk")
 
             except socket.timeout:
-                # Timeout already handled above, but catch here as well for safety
                 continue
             except Exception as e:
-                # Handle real socket errors (e.g., connection reset by peer)
                 logger.error(f"Receiver socket error: {e}")
-                # Break on socket errors to allow cleanup
                 break
     
     finally:
@@ -369,29 +345,28 @@ async def smart_ear_loop(
     transcript_queue: "asyncio.Queue[TranscriptMessage]",
     packet_queue: "asyncio.Queue[PacketSummaryMessage]",
     audio_service: AudioService,
-):
+) -> None:
     """
-    Main Smart Ear engine loop (Async).
+    Main Smart Ear engine loop for real-time audio processing.
+    
+    Processes audio input using VAD, transcription, and prosody extraction.
+    Responds to control state changes from the frontend and emits transcript
+    and packet summary events. Runs asynchronously to avoid blocking the
+    main event loop.
     
     Args:
-        control_state: Control state for the engine
-        transcript_queue: Queue for transcript messages
-        packet_queue: Queue for packet summary messages
-        audio_service: Shared AudioService instance for audio input
+        control_state: Shared control state updated by WebSocket messages.
+        transcript_queue: Async queue for emitting transcript messages to frontend.
+        packet_queue: Async queue for emitting packet summary messages to frontend.
+        audio_service: Shared AudioService instance for audio input capture.
     """
     print("Initializing Smart Ear services...")
 
-    # 1. Initialize Services (Heavy lifting, might take a moment)
-    # We run these in executor if they take too long, but usually init is fine to block briefly on startup
     loop = asyncio.get_running_loop()
 
     try:
-        # Instantiate services
-        # We use a thread pool for heavy computation (transcription)
         executor = ThreadPoolExecutor(max_workers=2)
 
-        # Initialize hardware/models
-        # audio_service is now passed as parameter
         vad_model = VoiceActivityDetector()
         transcriber = Transcriber()
         prosody_tool = ProsodyExtractor()
@@ -433,17 +408,12 @@ async def smart_ear_loop(
 
     try:
         while True:
-            # Non-blocking check of the queue
             try:
-                # Get up to N chunks at a time to be efficient?
-                # For now, process one by one but quickly.
                 chunk = audio_queue.get_nowait()
             except queue.Empty:
-                # Yield control if no audio
                 await asyncio.sleep(0.01)
                 continue
 
-            # Logic ported from sender_main.py
             trigger_processing = False
 
             # Read Control State
@@ -481,14 +451,9 @@ async def smart_ear_loop(
                 # Discard
                 pass
 
-            # PROCESSING
             if trigger_processing and len(audio_buffer) > 0:
-                # Combine buffer
                 combined_audio = np.concatenate(audio_buffer)
 
-                # Run Transcription & Prosody in Executor (Don't block loop!)
-
-                # Define wrapper for transcription
                 def process_audio_blocking(audio_data):
                     t_text = ""
                     t_meta = {}
@@ -504,31 +469,26 @@ async def smart_ear_loop(
                         t_meta = {
                             "energy": "Normal",
                             "pitch": "Normal",
-                        }  # Default fallback
+                        }
 
                     return t_text, t_meta
 
-                # Await the result from thread pool
                 text, meta = await loop.run_in_executor(
                     executor, process_audio_blocking, combined_audio
                 )
 
-                # Clear buffer
                 audio_buffer = []
                 silence_counter = 0
 
-                # Emit Events if we got text
                 if text.strip():
                     print(f"Captured: '{text}' | Tone: {meta}")
 
-                    # Define transmission wrapper
                     def transmit_packet_blocking():
                         try:
-                            # Map API mode (string enum) to Protocol mode (int enum)
                             protocol_mode = map_api_mode_to_protocol_mode(control_state.mode)
                             packet = JanusPacket(
                                 text=text,
-                                mode=protocol_mode,  # Uses UI selection (Morse/Text/Semantic)
+                                mode=protocol_mode,
                                 prosody=meta,
                                 override_emotion=control_state.emotion_override
                             )
@@ -536,8 +496,6 @@ async def smart_ear_loop(
                         except Exception as e:
                             print(f"Transmission Error: {e}")
 
-                    # Await transmission (Simulation Throttle)
-                    # This keeps the WS alive but blocks the next audio chunk processing
                     await loop.run_in_executor(executor, transmit_packet_blocking)
 
                     # Extract numeric prosody values if available in meta

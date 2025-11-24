@@ -198,7 +198,11 @@ def audio_consumer(
 
 def main_loop() -> None:
     """
-    Main entry point: Sets up Producer-Consumer threads and manages lifecycle.
+    Main entry point for the sender application.
+    
+    Initializes audio processing services and sets up producer-consumer threads
+    for continuous audio capture and processing. Manages application lifecycle
+    and graceful shutdown on interrupt.
     """
     # 1. INSTANTIATE SERVICES
     print("Initializing services...")

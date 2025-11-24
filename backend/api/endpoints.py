@@ -1,7 +1,8 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
 import os
-import difflib
+from difflib import SequenceMatcher
 from pathlib import Path
+
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from ..services.transcriber import Transcriber
 
@@ -12,14 +13,17 @@ VERIFICATION_PHRASE = "The quick brown fox jumps over the lazy dog."
 SIMILARITY_THRESHOLD = 0.8
 
 @router.get("/health")
-async def health_check():
+async def health_check() -> dict:
     """
     Basic health check route.
+    
+    Returns:
+        dict: Status dictionary with "status" key set to "ok".
     """
     return {"status": "ok"}
 
 @router.post("/voice/verify")
-async def verify_voice(audio_file: UploadFile = File(...)):
+async def verify_voice(audio_file: UploadFile = File(...)) -> dict:
     """
     Verify and save voice reference audio.
     
@@ -52,7 +56,7 @@ async def verify_voice(audio_file: UploadFile = File(...)):
         normalized_phrase = VERIFICATION_PHRASE.lower().strip()
         
         # Calculate similarity using SequenceMatcher
-        similarity = difflib.SequenceMatcher(None, normalized_transcript, normalized_phrase).ratio()
+        similarity = SequenceMatcher(None, normalized_transcript, normalized_phrase).ratio()
         
         # Check if similarity meets threshold
         if similarity >= SIMILARITY_THRESHOLD:
