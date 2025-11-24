@@ -156,83 +156,65 @@ class Synthesizer:
             bytes: Raw PCM audio data (WAV format) ready for PyAudio playback.
                 Falls back to fast TTS if API call fails.
         """
-        # Check for hot-reload of reference audio
         self._check_and_reload_reference_audio()
         
-        # 1. CONSTRUCT PROMPT
-        #    Determine the "Emotion Tag" to prepend to the text.
         if packet.override_emotion and packet.override_emotion != "Auto":
-            # Logic A (Manual Override):
-            # Use parentheses format for Fish Audio tones
             prompt = f"({packet.override_emotion}) {packet.text}"
         else:
-            # Logic B (Auto/Prosody Map):
             prosody = packet.prosody or {}
             pitch = prosody.get('pitch', 'Normal')
             energy = prosody.get('energy', 'Normal')
             
-            # Map combination to emotion tags (using Fish Audio's available tones)
             if pitch == 'High' and energy == 'Loud':
-                emotion_tag = "excited"  # High pitch + loud = excited
+                emotion_tag = "excited"
             elif pitch == 'High' and energy == 'Normal':
-                emotion_tag = "joyful"  # High pitch + normal = joyful
+                emotion_tag = "joyful"
             elif pitch == 'High' and energy in ('Quiet', 'Low'):
-                emotion_tag = "whispering"  # High pitch + quiet = whispering
+                emotion_tag = "whispering"
             elif pitch == 'Low' and energy == 'Loud':
-                emotion_tag = "shouting"  # Low pitch + loud = shouting
+                emotion_tag = "shouting"
             elif pitch == 'Low' and energy == 'Low':
-                emotion_tag = "sad"  # Low pitch + low energy = sad
+                emotion_tag = "sad"
             elif pitch == 'Low' and energy == 'Normal':
-                emotion_tag = "relaxed"  # Low pitch + normal = relaxed
+                emotion_tag = "relaxed"
             elif energy == 'Loud':
-                emotion_tag = "shouting"  # Any pitch + loud = shouting
+                emotion_tag = "shouting"
             elif energy in ('Quiet', 'Low'):
-                emotion_tag = "whispering"  # Any pitch + quiet = whispering
+                emotion_tag = "whispering"
             else:
-                emotion_tag = "relaxed"  # Default to relaxed
+                emotion_tag = "relaxed"
             
             prompt = f"({emotion_tag}) {packet.text}"
 
-        # 2. CALL FISH AUDIO API
         try:
-            # Create references list if we have reference audio bytes (cloned voice)
             references = None
             reference_id = None
             
             if self.reference_audio_bytes:
-                # Use cloned voice with references parameter
                 references = [ReferenceAudio(
                     audio=self.reference_audio_bytes,
-                    text=""  # Reference transcript not available, using empty string
+                    text=""
                 )]
             else:
-                # Fall back to generic voice with default reference_id
                 reference_id = "5196af35f6ff4a0dbf541793fc9f2157"
             
-            # Call API directly (new API - no TTSRequest object needed)
-            # Note: "pcm" format may not be supported, using "wav" which contains PCM data
             print(prompt)
             
-            # Build API call parameters
             api_params = {
                 "text": prompt,
                 "format": "wav",  # Changed from "pcm" - wav contains PCM data
                 "latency": "balanced"
             }
             
-            # Use references if available, otherwise use reference_id
             if references:
                 api_params["references"] = references
             else:
                 api_params["reference_id"] = reference_id
             
             audio_bytes = self.client.tts.convert(**api_params)
-            
-            # New API returns complete audio bytes directly (not an iterator)
             return audio_bytes
             
         except Exception as e:
-            # Fallback to fast TTS on API error
             print(f"Synthesis error: {e}")
             return self._generate_fast_tts(packet.text, packet.override_emotion)
 

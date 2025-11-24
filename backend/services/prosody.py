@@ -60,14 +60,11 @@ class ProsodyExtractor:
         if not isinstance(audio_buffer, np.ndarray):
             audio_buffer = np.array(audio_buffer, dtype=np.float32)
         
-        # Ensure float32 format
         if audio_buffer.dtype != np.float32:
             audio_buffer = audio_buffer.astype(np.float32)
         
-        # 1. Calculate ENERGY (RMS)
         rms = np.sqrt(np.mean(audio_buffer ** 2))
         
-        # Map RMS to tags (typical RMS range for speech: 0.01-0.3)
         if rms < 0.05:
             energy_tag = 'Quiet'
         elif rms < 0.15:
@@ -75,30 +72,22 @@ class ProsodyExtractor:
         else:
             energy_tag = 'Loud'
         
-        # 2. Calculate PITCH (F0)
         pitch_values = []
-        
-        # Process buffer in hop_size chunks
         total_samples = len(audio_buffer)
         for i in range(0, total_samples, self.hop_size):
             chunk = audio_buffer[i:i + self.hop_size]
             
-            # Pad chunk if needed to match hop_size
             if len(chunk) < self.hop_size:
                 chunk = np.pad(chunk, (0, self.hop_size - len(chunk)), mode='constant')
             
-            # Get pitch for this chunk
             pitch = self.pitch_detector(chunk)[0]
             
-            # Filter out 0.0 values (silence/unvoiced)
             if pitch > 0.0:
                 pitch_values.append(pitch)
         
-        # Calculate average F0 of voiced segments
         if len(pitch_values) > 0:
             avg_pitch = np.mean(pitch_values)
             
-            # Map average F0 to tags (typical male: 85-180Hz, female: 165-255Hz)
             if avg_pitch < 120:
                 pitch_tag = 'Deep'
             elif avg_pitch < 200:
@@ -106,10 +95,8 @@ class ProsodyExtractor:
             else:
                 pitch_tag = 'High'
         else:
-            # No voiced segments detected
-            pitch_tag = 'Normal'  # Default
+            pitch_tag = 'Normal'
         
-        # 3. Return metadata dictionary
         return {
             'energy': energy_tag,
             'pitch': pitch_tag

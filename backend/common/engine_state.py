@@ -1,11 +1,20 @@
+"""
+Shared engine state management.
+
+Provides global control state and event queues for communication between
+the WebSocket handlers and the Smart Ear engine loop.
+"""
+
 import asyncio
-from pydantic import BaseModel
 from typing import Optional
+
+from pydantic import BaseModel
+
 from ..api.types import (
-    JanusMode,
     EmotionOverride,
-    TranscriptMessage,
+    JanusMode,
     PacketSummaryMessage,
+    TranscriptMessage,
 )
 
 

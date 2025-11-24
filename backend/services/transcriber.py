@@ -4,8 +4,9 @@ Purpose: Converts raw audio buffers into text using Faster-Whisper.
          Optimized for CPU usage with Int8 quantization.
 """
 
-from faster_whisper import WhisperModel
 import numpy as np
+
+from faster_whisper import WhisperModel
 
 class Transcriber:
     def __init__(self, model_size: str = 'base.en') -> None:

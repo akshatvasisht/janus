@@ -5,10 +5,11 @@ Purpose: Defines the 'Janus Packet' structure and handles the binary serializati
          It uses MessagePack to ensure the payload is as small as possible.
 """
 
-import msgpack
 import enum
 import time
 from typing import Optional
+
+import msgpack
 
 
 class JanusMode(enum.IntEnum):

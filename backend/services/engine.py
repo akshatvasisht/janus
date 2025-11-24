@@ -70,13 +70,11 @@ def playback_worker(
     """
     while not stop_event.is_set():
         try:
-            # Get audio bytes from queue (blocking with timeout)
             try:
                 audio_bytes = playback_queue.get(timeout=0.1)
             except queue.Empty:
                 continue
             
-            # Play the audio chunk
             if audio_bytes:
                 audio_service.write_chunk(audio_bytes)
             
@@ -103,7 +101,6 @@ def receiver_loop(
         stop_event: Threading event to signal shutdown. Loop exits when set.
         event_loop: asyncio event loop for emitting events to frontend.
     """
-    # 1. SETUP
     api_key = os.getenv("FISH_AUDIO_API_KEY")
     if not api_key:
         logger.error("FISH_AUDIO_API_KEY environment variable not set")
@@ -112,14 +109,12 @@ def receiver_loop(
     receiver_port = int(os.getenv("RECEIVER_PORT", "5005"))
     reference_audio_path = os.getenv("REFERENCE_AUDIO_PATH", None)
     
-    # Initialize Synthesizer
     try:
         synthesizer = Synthesizer(api_key=api_key, reference_audio_path=reference_audio_path)
     except Exception as e:
         logger.error(f"Failed to initialize Synthesizer: {e}")
         return
     
-    # 2. NETWORK SETUP (TCP only)
     listen_sock = None
     sock = None
     try:
@@ -128,12 +123,8 @@ def receiver_loop(
         listen_sock.bind(('0.0.0.0', receiver_port))
         listen_sock.listen(1)
         logger.info(f"Listening for Transmissions on TCP port {receiver_port}...")
-        
-        # Accept connection
         sock, addr = listen_sock.accept()
         logger.info(f"Connection established from {addr}")
-        
-        # Set a timeout on the socket so operations are not indefinitely blocking
         sock.settimeout(1.0)
     except Exception as e:
         logger.error(f"Failed to set up TCP listener: {e}")
@@ -141,7 +132,6 @@ def receiver_loop(
             listen_sock.close()
         return
     
-    # Create playback queue and thread
     playback_queue = queue.Queue(maxsize=100)
     playback_stop_event = threading.Event()
     
@@ -152,7 +142,6 @@ def receiver_loop(
     )
     playback_thread.start()
 
-    # 3. MAIN LOOP
     try:
         while not stop_event.is_set():
             try:
@@ -181,8 +170,6 @@ def receiver_loop(
                     logger.error(f"Corrupt packet received: {e}")
                     continue
 
-                # B.5. EMIT EVENTS TO FRONTEND
-                # Get queues and emit transcript/packet summary events
                 try:
                     transcript_queue = engine_state.get_transcript_queue()
                     packet_queue = engine_state.get_packet_queue()
@@ -254,14 +241,10 @@ def receiver_loop(
                 break
     
     finally:
-        # Cleanup
         logger.info("Shutting down receiver loop...")
         playback_stop_event.set()
-        
-        # Wait for playback thread to finish
         playback_thread.join(timeout=2)
         
-        # Close sockets
         if sock:
             try:
                 sock.close()
@@ -360,23 +343,18 @@ async def smart_ear_loop(
         packet_queue: Async queue for emitting packet summary messages to frontend.
         audio_service: Shared AudioService instance for audio input capture.
     """
-    print("Initializing Smart Ear services...")
+        print("Initializing Smart Ear services...")
 
     loop = asyncio.get_running_loop()
 
     try:
         executor = ThreadPoolExecutor(max_workers=2)
-
         vad_model = VoiceActivityDetector()
         transcriber = Transcriber()
         prosody_tool = ProsodyExtractor()
 
-        # Configure Link Simulator
-        # Read from environment variables or use defaults
         target_ip = os.getenv("TARGET_IP", "127.0.0.1")
         target_port = int(os.getenv("TARGET_PORT", "5005"))
-        
-        # Auto-detect TCP mode if ngrok is detected in target IP
         use_tcp = "ngrok" in target_ip.lower() or os.getenv("USE_TCP", "").lower() == "true"
         
         print(f"Link Simulator: {target_ip}:{target_port} ({'TCP' if use_tcp else 'UDP'})")
@@ -388,7 +366,6 @@ async def smart_ear_loop(
         print(f"Failed to initialize Smart Ear services: {e}")
         return
 
-    # 2. Setup Producer Thread
     audio_queue = queue.Queue(maxsize=100)
     stop_event = threading.Event()
 
@@ -398,8 +375,6 @@ async def smart_ear_loop(
         daemon=True,
     )
     producer_thread.start()
-
-    # 3. Consumer Loop (The "Brain" logic, ported to Async)
 
     audio_buffer = []
     silence_counter = 0
@@ -416,23 +391,18 @@ async def smart_ear_loop(
 
             trigger_processing = False
 
-            # Read Control State
             is_streaming_mode = control_state.is_streaming
             is_recording_hold = control_state.is_recording
 
-            # CASE 1: HOLD MODE
             if is_recording_hold:
                 audio_buffer.append(chunk)
                 previous_hold_state = True
-                # Don't process yet
                 continue
 
-            # Check release
             if previous_hold_state and not is_recording_hold:
                 trigger_processing = True
                 previous_hold_state = False
 
-            # CASE 2: STREAMING
             elif is_streaming_mode:
                 is_speech = vad_model.is_speech(chunk)
                 if is_speech:
@@ -446,9 +416,7 @@ async def smart_ear_loop(
                     if silence_counter > SILENCE_THRESHOLD_CHUNKS:
                         trigger_processing = True
 
-            # CASE 3: IDLE
             else:
-                # Discard
                 pass
 
             if trigger_processing and len(audio_buffer) > 0:
@@ -498,9 +466,6 @@ async def smart_ear_loop(
 
                     await loop.run_in_executor(executor, transmit_packet_blocking)
 
-                    # Extract numeric prosody values if available in meta
-                    # Prosody extractor returns categorical tags ('High', 'Normal', etc.)
-                    # Numeric extraction would require additional processing of raw audio
                     avg_pitch_hz = None
                     avg_energy = None
                     
@@ -518,7 +483,6 @@ async def smart_ear_loop(
     finally:
         stop_event.set()
         producer_thread.join(timeout=2)
-        # audio_service.close() is now handled by server.py
         if 'link_simulator' in locals():
             link_simulator.close()
         executor.shutdown(wait=False)
@@ -532,7 +496,7 @@ async def _emit_events(
     mode: JanusMode,
     transcript_queue: "asyncio.Queue[TranscriptMessage]",
     packet_queue: "asyncio.Queue[PacketSummaryMessage]",
-):
+) -> None:
     now_ms = int(time.time() * 1000)
 
     transcript_msg = TranscriptMessage(

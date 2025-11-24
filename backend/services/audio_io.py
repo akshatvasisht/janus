@@ -93,10 +93,9 @@ class AudioService:
                     pass
                 self.output_stream = None
         
-        # Set availability flag only if at least one stream is available
         if self.input_stream is not None or self.output_stream is not None:
             self._pyaudio_available = True
-            logger.info("✅ AudioService initialized successfully.")
+            logger.info("AudioService initialized successfully.")
         else:
             logger.warning("AudioService initialized but no streams available. Running in Silent/Mock mode.")
 

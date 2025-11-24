@@ -1,3 +1,10 @@
+"""
+API endpoints for RESTful HTTP requests.
+
+Provides health check and voice verification endpoints for the Janus backend.
+Handles file uploads and voice cloning verification.
+"""
+
 import os
 from difflib import SequenceMatcher
 from pathlib import Path

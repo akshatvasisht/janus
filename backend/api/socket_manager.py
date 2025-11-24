@@ -1,9 +1,17 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+"""
+WebSocket manager for bi-directional communication with frontend.
+
+Handles WebSocket connections, receives control messages from the frontend,
+and forwards transcript and packet summary events from the engine to the frontend.
+"""
+
 import asyncio
 import json
 
-from .types import ControlMessage, JanusOutboundMessage
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
 from ..common import engine_state
+from .types import ControlMessage, JanusOutboundMessage
 
 router = APIRouter()
 
