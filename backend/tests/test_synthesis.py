@@ -3,12 +3,10 @@ Test Suite for Phase 4 Synthesizer Service
 Tests the synthesizer's routing logic, prompt construction, and audio generation.
 """
 
-# Standard library imports
 import os
 import sys
 from unittest.mock import MagicMock, Mock, call, mock_open, patch
 
-# Third-party imports
 import numpy as np
 import pytest
 from fishaudio import FishAudio
@@ -17,7 +15,6 @@ from fishaudio.types import ReferenceAudio
 # Add project root to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
-# Local imports
 from backend.common.protocol import JanusMode, JanusPacket
 from backend.services.synthesizer import Synthesizer
 

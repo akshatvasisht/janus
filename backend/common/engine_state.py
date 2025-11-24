@@ -5,14 +5,11 @@ Provides global control state and event queues for communication between
 the WebSocket handlers and the Smart Ear engine loop.
 """
 
-# Standard library imports
 import asyncio
 from typing import Optional
 
-# Third-party imports
 from pydantic import BaseModel
 
-# Local imports
 from ..api.types import (
     EmotionOverride,
     JanusMode,

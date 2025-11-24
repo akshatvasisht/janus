@@ -5,14 +5,11 @@ Handles WebSocket connections, receives control messages from the frontend,
 and forwards transcript and packet summary events from the engine to the frontend.
 """
 
-# Standard library imports
 import asyncio
 import json
 
-# Third-party imports
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-# Local imports
 from ..common import engine_state
 from .types import ControlMessage, JanusOutboundMessage
 

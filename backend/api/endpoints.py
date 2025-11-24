@@ -5,15 +5,12 @@ Provides health check and voice verification endpoints for the Janus backend.
 Handles file uploads and voice cloning verification.
 """
 
-# Standard library imports
 import os
 from difflib import SequenceMatcher
 from pathlib import Path
 
-# Third-party imports
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
-# Local imports
 from ..services.transcriber import Transcriber
 
 router = APIRouter()

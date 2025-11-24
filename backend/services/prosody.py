@@ -4,10 +4,6 @@ Purpose: Uses Aubio to extract the 'Emotional Metadata' (Pitch and Energy)
          from the audio signal. This allows the receiver to 'hallucinate' the tone.
 """
 
-# Standard library imports
-# (none)
-
-# Third-party imports
 import aubio
 import numpy as np
 

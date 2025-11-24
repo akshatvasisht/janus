@@ -1,20 +1,18 @@
 """
-Module: Main Sender Logic (The 'Ear' Controller)
+Module: Main Sender Logic
 Purpose: Orchestrates the Audio, VAD, Transcription, and Prosody services.
-         Implements the 'Hybrid Trigger' logic (Toggle vs. Hold).
+         Implements hybrid trigger logic supporting both toggle and hold-to-record modes.
          Uses Producer-Consumer pattern to prevent PyAudio buffer overflow.
 """
 
-# Standard library imports
+import logging
 import os
 import queue
 import threading
 import time
 
-# Third-party imports
 import numpy as np
 
-# Local imports
 from backend.common.protocol import JanusMode, JanusPacket
 from backend.services.audio_io import AudioService
 from backend.services.link_simulator import LinkSimulator
@@ -22,15 +20,20 @@ from backend.services.prosody import ProsodyExtractor
 from backend.services.transcriber import Transcriber
 from backend.services.vad import VoiceActivityDetector
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 def audio_producer(
     audio_service: AudioService,
     audio_queue: queue.Queue[np.ndarray],
     stop_event: threading.Event,
 ) -> None:
     """
-    Thread A (Producer - "The Ear"): Continuously reads audio chunks and puts them in queue.
+    Audio producer thread worker function.
     
-    Never stops reading to prevent PyAudio buffer overflow.
+    Continuously reads audio chunks from the audio service and places them in the queue
+    for processing. Runs until stop_event is set. Never stops reading to prevent
+    PyAudio buffer overflow.
     
     Args:
         audio_service: AudioService instance for reading audio input.
@@ -48,7 +51,7 @@ def audio_producer(
             except queue.Full:
                 pass
         except Exception as e:
-            print(f"Error in audio producer: {e}")
+            logger.error(f"Error in audio producer: {e}")
 
 
 def audio_consumer(
@@ -61,7 +64,11 @@ def audio_consumer(
     stop_event: threading.Event,
 ) -> None:
     """
-    Thread B (Consumer - "The Brain"): Processes audio chunks with hybrid trigger logic.
+    Audio consumer thread worker function.
+    
+    Processes audio chunks with hybrid trigger logic supporting both streaming
+    (VAD-based) and hold-to-record modes. Performs transcription, prosody extraction,
+    and packet transmission.
     
     Args:
         audio_service: AudioService instance for reading audio input.
@@ -129,13 +136,13 @@ def audio_consumer(
                 try:
                     text = transcriber.transcribe_buffer(combined_audio)
                 except Exception as e:
-                    print(f"Transcription error: {e}")
+                    logger.error(f"Transcription error: {e}")
                     text = ""
                 
                 try:
                     meta = prosody_tool.analyze_buffer(combined_audio)
                 except Exception as e:
-                    print(f"Prosody extraction error: {e}")
+                    logger.error(f"Prosody extraction error: {e}")
                     meta = {'energy': 'Normal', 'pitch': 'Normal'}
                 
                 audio_buffer = []
@@ -149,7 +156,7 @@ def audio_consumer(
                         break
                 
                 if text.strip():
-                    print(f"Captured: '{text}' | Tone: {meta}")
+                    logger.info(f"Captured: '{text}' | Tone: {meta}")
                 
                 if text.strip():
                     try:
@@ -162,12 +169,12 @@ def audio_consumer(
                         serialized_bytes = packet.serialize()
                         link_simulator.transmit(serialized_bytes)
                     except Exception as e:
-                        print(f"Packet transmission error: {e}")
+                        logger.error(f"Packet transmission error: {e}")
             
             audio_queue.task_done()
             
         except Exception as e:
-            print(f"Error in audio consumer: {e}")
+            logger.error(f"Error in audio consumer: {e}")
             audio_queue.task_done()
 
 
@@ -182,18 +189,18 @@ def main_loop() -> None:
     Returns:
         None
     """
-    print("Initializing services...")
+    logger.info("Initializing services...")
     audio_service = AudioService()
     vad_model = VoiceActivityDetector()
     transcriber = Transcriber()
     prosody_tool = ProsodyExtractor()
-    print("Services initialized.")
+    logger.info("Services initialized.")
     
     target_ip = os.getenv("TARGET_IP", "127.0.0.1")
     target_port = int(os.getenv("TARGET_PORT", "5005"))
     use_tcp = "ngrok" in target_ip.lower() or os.getenv("USE_TCP", "").lower() == "true"
     
-    print(f"Link Simulator: {target_ip}:{target_port} ({'TCP' if use_tcp else 'UDP'})")
+    logger.info(f"Link Simulator: {target_ip}:{target_port} ({'TCP' if use_tcp else 'UDP'})")
     link_simulator = LinkSimulator(target_ip=target_ip, target_port=target_port, use_tcp=use_tcp)
     
     audio_queue = queue.Queue(maxsize=100)
@@ -213,19 +220,19 @@ def main_loop() -> None:
     )
     consumer_thread.start()
     
-    print("Audio processing started. Press Ctrl+C to stop.")
+    logger.info("Audio processing started. Press Ctrl+C to stop.")
     
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        print("\nShutting down...")
+        logger.info("Shutting down...")
         stop_event.set()
         producer_thread.join(timeout=2)
         consumer_thread.join(timeout=2)
         audio_service.close()
         link_simulator.close()
-        print("Shutdown complete.")
+        logger.info("Shutdown complete.")
 
 
 if __name__ == "__main__":

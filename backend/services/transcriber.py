@@ -4,10 +4,6 @@ Purpose: Converts raw audio buffers into text using Faster-Whisper.
          Optimized for CPU usage with Int8 quantization.
 """
 
-# Standard library imports
-# (none)
-
-# Third-party imports
 import numpy as np
 from faster_whisper import WhisperModel
 

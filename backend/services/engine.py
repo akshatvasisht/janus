@@ -1,4 +1,3 @@
-# Standard library imports
 import asyncio
 import logging
 import os
@@ -10,10 +9,8 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
-# Third-party imports
 import numpy as np
 
-# Local imports
 from ..api.types import JanusMode, PacketSummaryMessage, TranscriptMessage
 from ..common import engine_state
 from ..common.protocol import JanusMode as ProtocolJanusMode, JanusPacket
@@ -87,7 +84,7 @@ def playback_worker(
             playback_queue.task_done()
             
         except Exception as e:
-            print(f"Playback error: {e}")
+            logger.error(f"Playback error: {e}")
             playback_queue.task_done()
 
 
@@ -228,8 +225,8 @@ def receiver_loop(
                 }
                 mode_name = mode_names.get(packet.mode, "Unknown")
                 
-                print(f"[RECEIVED] [{mode_name}] '{packet.text}'")
-                print(f"   Meta: Energy={packet.prosody.get('energy', 'N/A')}, "
+                logger.info(f"[RECEIVED] [{mode_name}] '{packet.text}'")
+                logger.debug(f"   Meta: Energy={packet.prosody.get('energy', 'N/A')}, "
                       f"Pitch={packet.prosody.get('pitch', 'N/A')} -> Prompt: [{emotion_tag}]")
 
                 try:
@@ -358,7 +355,7 @@ async def smart_ear_loop(
     Returns:
         None
     """
-        print("Initializing Smart Ear services...")
+    logger.info("Initializing Smart Ear services...")
 
     loop = asyncio.get_running_loop()
 
@@ -372,13 +369,13 @@ async def smart_ear_loop(
         target_port = int(os.getenv("TARGET_PORT", "5005"))
         use_tcp = "ngrok" in target_ip.lower() or os.getenv("USE_TCP", "").lower() == "true"
         
-        print(f"Link Simulator: {target_ip}:{target_port} ({'TCP' if use_tcp else 'UDP'})")
+        logger.info(f"Link Simulator: {target_ip}:{target_port} ({'TCP' if use_tcp else 'UDP'})")
         link_simulator = LinkSimulator(target_ip=target_ip, target_port=target_port, use_tcp=use_tcp)
 
-        print("Smart Ear services ready.")
+        logger.info("Smart Ear services ready.")
 
     except Exception as e:
-        print(f"Failed to initialize Smart Ear services: {e}")
+        logger.error(f"Failed to initialize Smart Ear services: {e}")
         return
 
     audio_queue = queue.Queue(maxsize=100)
@@ -443,12 +440,12 @@ async def smart_ear_loop(
                     try:
                         t_text = transcriber.transcribe_buffer(audio_data)
                     except Exception as e:
-                        print(f"Transcribe error: {e}")
+                        logger.error(f"Transcribe error: {e}")
 
                     try:
                         t_meta = prosody_tool.analyze_buffer(audio_data)
                     except Exception as e:
-                        print(f"Prosody error: {e}")
+                        logger.error(f"Prosody error: {e}")
                         t_meta = {
                             "energy": "Normal",
                             "pitch": "Normal",
@@ -464,7 +461,7 @@ async def smart_ear_loop(
                 silence_counter = 0
 
                 if text.strip():
-                    print(f"Captured: '{text}' | Tone: {meta}")
+                    logger.info(f"Captured: '{text}' | Tone: {meta}")
 
                     def transmit_packet_blocking():
                         try:
@@ -477,7 +474,7 @@ async def smart_ear_loop(
                             )
                             link_simulator.transmit(packet.serialize())
                         except Exception as e:
-                            print(f"Transmission Error: {e}")
+                            logger.error(f"Transmission Error: {e}")
 
                     await loop.run_in_executor(executor, transmit_packet_blocking)
 
@@ -494,14 +491,14 @@ async def smart_ear_loop(
                     )
 
     except asyncio.CancelledError:
-        print("Smart Ear loop cancelled. Cleaning up...")
+        logger.info("Smart Ear loop cancelled. Cleaning up...")
     finally:
         stop_event.set()
         producer_thread.join(timeout=2)
         if 'link_simulator' in locals():
             link_simulator.close()
         executor.shutdown(wait=False)
-        print("Smart Ear stopped.")
+        logger.info("Smart Ear stopped.")
 
 
 async def _emit_events(

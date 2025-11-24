@@ -1,13 +1,10 @@
-# Standard library imports
 import queue
 import socket
 import threading
 from unittest.mock import MagicMock, call, patch
 
-# Third-party imports
 import pytest
 
-# Local imports
 from backend.services.engine import playback_worker, recv_exact, receiver_loop
 
 

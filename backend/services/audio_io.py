@@ -5,12 +5,10 @@ Purpose: Handles the raw interface with the microphone and speakers using PyAudi
          which are required for AI processing.
 """
 
-# Standard library imports
 import logging
 import warnings
 from typing import Union
 
-# Third-party imports
 import numpy as np
 import pyaudio
 
@@ -24,12 +22,6 @@ class AudioService:
         Sets up PyAudio instance and opens input/output streams for microphone capture
         and speaker playback. Configures audio parameters (44100Hz sample rate, 512 sample
         chunk size, mono channel) required for AI processing pipelines.
-        
-        Args:
-            None
-        
-        Returns:
-            None
         """
         # Audio configuration constants
         self.SAMPLE_RATE = 44100
@@ -124,7 +116,7 @@ class AudioService:
         try:
             raw_data = self.input_stream.read(self.CHUNK_SIZE, exception_on_overflow=False)
         except IOError as e:
-            print(f"Audio input overflow: {e}")
+            logger.warning(f"Audio input overflow: {e}")
             raw_data = b'\x00' * (self.CHUNK_SIZE * 2)
         
         audio_int16 = np.frombuffer(raw_data, dtype=np.int16)

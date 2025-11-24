@@ -4,10 +4,6 @@ Purpose: Acts as the 'Gatekeeper'. Uses Silero-VAD to analyze audio chunks
          and determine if they contain human speech or just background noise.
 """
 
-# Standard library imports
-# (none)
-
-# Third-party imports
 import numpy as np
 import torch
 
