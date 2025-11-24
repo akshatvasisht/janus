@@ -18,6 +18,6 @@ echo "--- [3/3] Installing Python Libraries ---"
 pip install --upgrade pip
 # Resolve requirements.txt path relative to script location
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-pip install -r "${SCRIPT_DIR}/../requirements.txt"
+pip install -r "${SCRIPT_DIR}/requirements.txt"
 
 echo "--- Setup Complete! Run 'source venv/bin/activate' to start. ---"

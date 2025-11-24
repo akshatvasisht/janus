@@ -16,8 +16,8 @@ import pytest
 # Add project root to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
-import backend.sender_main as sender_main
-from backend.sender_main import audio_consumer, audio_producer
+import backend.scripts.sender_main as sender_main
+from backend.scripts.sender_main import audio_consumer, audio_producer
 from backend.services.audio_io import AudioService
 from backend.services.prosody import ProsodyExtractor
 from backend.services.transcriber import Transcriber

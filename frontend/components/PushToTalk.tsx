@@ -1,5 +1,3 @@
-// TODO: Integrate with real audio capture/playback when backend is ready
-// Currently only handles UI state - no actual microphone access or audio playback
 import React, { useCallback, useEffect } from 'react';
 import { useDebounce } from '../hooks/useDebounce';
 
@@ -12,6 +10,21 @@ type PushToTalkProps = {
   onToggleStreaming: () => void;
 };
 
+/**
+ * Interaction button for the Janus interface.
+ * 
+ * Handles both "Hold-to-Record" and "Tap-to-Stream" patterns via separate listeners
+ * to avoid event conflict. Supports keyboard shortcuts (Space for hold, S for toggle)
+ * and provides visual feedback for recording and streaming states.
+ * 
+ * @param props - Component props.
+ * @param props.isRecording - Whether recording is currently active.
+ * @param props.isStreaming - Whether streaming mode is enabled.
+ * @param props.disabled - Whether the component is disabled (e.g., disconnected).
+ * @param props.onHoldStart - Callback invoked when hold-to-record starts.
+ * @param props.onHoldEnd - Callback invoked when hold-to-record ends.
+ * @param props.onToggleStreaming - Callback invoked to toggle streaming mode.
+ */
 export default function PushToTalk({
   isRecording,
   isStreaming,
@@ -103,30 +116,7 @@ export default function PushToTalk({
               }
             : undefined
         }
-        onClick={
-          !disabled && !isRecording
-            ? (e) => {
-                // Logic: If it was a short click (not a hold), treat as toggle attempt if needed?
-                // Spec says: "Short Click/Tap: Toggles is_streaming"
-                // But we also have Hold logic.
-                // For simplicity with mouse events overlap, let's explicitly separate toggle button or
-                // rely on `onClick` firing after `onMouseUp`.
-                // Since `onMouseUp` fires `onHoldEnd`, we need to be careful.
-                // Actually, the spec says:
-                // Event A (Mouse Down): Sets is_recording = True.
-                // Event B (Mouse Up): Sets is_recording = False.
-                // Event C (Short Click/Tap): Toggles is_streaming = True/False.
-                // Implementing "Short Click" logic usually requires timing.
-                // However, standard PTT is just hold. The Toggle might be better as a separate small button
-                // or we handle it via timing here.
-                // Let's stick to Hold = PTT.
-                // The user might have meant "Tap" on a separate control or double tap?
-                // "Short helper text – e.g. 'Hold to send a burst. Tap to toggle streaming.'" implies same button.
-                // Let's trust the handler prop separation for now, but standard `button` click
-                // triggers after mouseup.
-              }
-            : undefined
-        }
+        onClick={undefined}
         disabled={disabled}
       >
         {/* Inner Ring decoration */}

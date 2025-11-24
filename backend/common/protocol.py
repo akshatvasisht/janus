@@ -18,7 +18,7 @@ class JanusMode(enum.IntEnum):
     """
     SEMANTIC_VOICE = 0  # Full semantic (Text + Prosody Data)
     TEXT_ONLY = 1       # Text only (no prosody, receiver uses default voice)
-    MORSE_CODE = 2      # Morse code (structure only, no implementation yet)
+    MORSE_CODE = 2      # Morse code (local sine wave generation)
 
 
 class JanusPacket:

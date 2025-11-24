@@ -1,12 +1,16 @@
 import { useEffect, useRef } from 'react';
 
 /**
- * Custom hook for debouncing function calls
- * @param callback - The function to debounce
- * @param delay - Delay in milliseconds
- * @returns Debounced function
+ * Custom hook for debouncing function calls.
+ * 
+ * Returns a debounced version of the callback function that delays execution
+ * until after the specified delay period has elapsed since the last invocation.
+ * 
+ * @param callback - The function to debounce.
+ * @param delay - Delay in milliseconds before executing the callback.
+ * @returns Debounced function with the same signature as the original callback.
  */
-export function useDebounce<T extends (...args: any[]) => void>(
+export function useDebounce<T extends (...args: unknown[]) => void>(
   callback: T,
   delay: number
 ): T {

@@ -1,10 +1,20 @@
 import React from 'react';
-import { JanusMode, PacketSummaryMessage } from '../types/janus';
+import { PacketSummaryMessage } from '../types/janus';
 
 type QuickStatsProps = {
   summary?: PacketSummaryMessage;
 };
 
+/**
+ * Quick statistics display component for packet information.
+ * 
+ * Displays metrics from the most recent packet including size, compression ratio,
+ * transmission mode, and estimated raw bytes. Shows placeholder message when no
+ * packet data is available.
+ * 
+ * @param props - Component props.
+ * @param props.summary - Packet summary message containing statistics to display.
+ */
 export default function QuickStats({ summary }: QuickStatsProps) {
   if (!summary) {
     return (
@@ -14,22 +24,18 @@ export default function QuickStats({ summary }: QuickStatsProps) {
     );
   }
 
-  const ratio = summary.estimatedRawBytes && summary.bytes > 0
-    ? (summary.estimatedRawBytes / summary.bytes).toFixed(1)
-    : '-';
-
   const modeLabel = {
-    0: 'Semantic',
-    1: 'Text',
-    2: 'Morse',
-  }[summary.mode];
+    semantic: 'Semantic',
+    text_only: 'Text',
+    morse: 'Morse',
+  }[summary.mode] || 'Unknown';
 
   return (
     <div className="p-4 rounded-lg bg-slate-900 border border-slate-800 space-y-3">
         <div className="flex justify-between items-center">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Last Packet</h3>
             <span className="text-[10px] font-mono text-slate-500">
-                {new Date(summary.timestamp).toLocaleTimeString()}
+                {new Date(summary.created_at_ms).toLocaleTimeString()}
             </span>
         </div>
         
@@ -39,16 +45,8 @@ export default function QuickStats({ summary }: QuickStatsProps) {
                 <div className="text-lg font-mono text-slate-200">{summary.bytes} B</div>
             </div>
             <div>
-                <div className="text-[10px] text-slate-500 uppercase">Compression</div>
-                <div className="text-lg font-mono text-green-400">{ratio}x</div>
-            </div>
-            <div>
                 <div className="text-[10px] text-slate-500 uppercase">Mode</div>
                 <div className="text-sm font-medium text-blue-300">{modeLabel}</div>
-            </div>
-            <div>
-                 <div className="text-[10px] text-slate-500 uppercase">Raw Est.</div>
-                 <div className="text-sm font-mono text-slate-400">{summary.estimatedRawBytes} B</div>
             </div>
         </div>
     </div>

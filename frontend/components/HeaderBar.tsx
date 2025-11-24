@@ -6,6 +6,16 @@ type HeaderBarProps = {
   lastError?: string | null;
 };
 
+/**
+ * Header bar component displaying application title and connection status.
+ * 
+ * Shows the Janus application branding and real-time WebSocket connection status
+ * with visual indicator. Displays error messages when connection issues occur.
+ * 
+ * @param props - Component props.
+ * @param props.status - Current WebSocket connection status.
+ * @param props.lastError - Optional error message to display when disconnected.
+ */
 export default function HeaderBar({ status, lastError }: HeaderBarProps) {
   const statusColor = {
     connected: 'bg-green-500',

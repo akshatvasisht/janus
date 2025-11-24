@@ -6,6 +6,16 @@ type EmotionSelectorProps = {
   onChange: (v: EmotionOverride) => void;
 };
 
+/**
+ * Emotion override selector component.
+ * 
+ * Provides buttons to select emotion override settings (auto, relaxed, panicked)
+ * for voice synthesis. Each option uses distinct color coding for visual feedback.
+ * 
+ * @param props - Component props.
+ * @param props.value - Currently selected emotion override value.
+ * @param props.onChange - Callback invoked when selection changes.
+ */
 export default function EmotionSelector({ value, onChange }: EmotionSelectorProps) {
   const options: EmotionOverride[] = ['auto', 'relaxed', 'panicked'];
 

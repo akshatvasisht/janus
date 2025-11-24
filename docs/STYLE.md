@@ -94,13 +94,13 @@ Janus is a real-time semantic audio codec system designed to optimize bandwidth 
 
 ### 4.2 Core Components
 
-**Frontend (The "Face"):**
+**Frontend:**
 
 * **Stack:** Next.js 14 (React), Tailwind CSS, Recharts.
 * **Role:** Provides the user interface for Push-to-Talk (PTT) interaction and visualizes real-time telemetry (bandwidth vs. cost).
 * **Communication:** Connects to the backend via WebSockets (useJanusSocket).
 
-**Backend (The "Brain"):**
+**Backend:**
 
 * **Stack:** Python 3.10+, FastAPI.
 * **Role:** Orchestrates the audio processing pipeline and manages WebSocket connections.
@@ -125,7 +125,9 @@ Janus is a real-time semantic audio codec system designed to optimize bandwidth 
 
 ## 5. File & Repository Standards
 * **README.md:** Must serve as the primary entry point for the project. It should contain the Project Overview, Architecture Summary, and setup instructions. It must not be left empty.
-* **projectdocs.md:** Reserved for deep-dive architectural documentation, glossary, and specific design decisions.
+* **docs/projectdocs.md:** Reserved for deep-dive architectural documentation, glossary, and specific design decisions. Located in the docs/ directory.
+* **docs/:** Directory containing detailed documentation (API.md, TESTING.md, STYLE.md, projectdocs.md).
+* **backend/scripts/:** Directory containing CLI utility scripts for testing and development.
 * **Code Comments:** Comments should focus on complex logic or "gotchas." Trivial logic (e.g., `i++ // increment i`) should not be commented.
 
 ---
