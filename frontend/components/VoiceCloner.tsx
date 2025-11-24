@@ -9,6 +9,16 @@ type VoiceClonerProps = {
   disabled?: boolean;
 };
 
+/**
+ * Voice cloning component for reference audio upload and verification.
+ * 
+ * Provides a modal interface for recording and uploading reference audio
+ * for voice cloning. Verifies the recording matches the verification phrase
+ * before accepting it as a voice reference.
+ * 
+ * @param props - Component props.
+ * @param props.disabled - Whether the component is disabled (e.g., disconnected).
+ */
 export default function VoiceCloner({ disabled = false }: VoiceClonerProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);

@@ -21,6 +21,22 @@ type ControlPanelProps = {
   }) => void;
 };
 
+/**
+ * Main control panel component for Janus interface.
+ * 
+ * Provides controls for push-to-talk interaction, transmission mode selection,
+ * emotion override settings, and voice cloning. Displays packet statistics
+ * and manages connection state.
+ * 
+ * @param props - Component props.
+ * @param props.status - Current WebSocket connection status.
+ * @param props.isRecording - Whether recording is currently active.
+ * @param props.isStreaming - Whether streaming mode is enabled.
+ * @param props.mode - Currently selected transmission mode.
+ * @param props.emotionOverride - Currently selected emotion override setting.
+ * @param props.lastPacketSummary - Most recent packet summary for statistics display.
+ * @param props.onUpdateControl - Callback invoked when control settings change.
+ */
 export default function ControlPanel({
   status,
   isRecording,

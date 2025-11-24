@@ -6,6 +6,13 @@ import HeaderBar from '../components/HeaderBar';
 import ControlPanel from '../components/ControlPanel';
 import ConversationPanel from '../components/ConversationPanel';
 
+/**
+ * Main page component for the Janus application interface.
+ * 
+ * Provides the primary user interface for push-to-talk interaction, transmission
+ * mode selection, and real-time transcript visualization. Manages WebSocket connection
+ * state and coordinates between control panel and conversation display components.
+ */
 export default function MissionControlPage() {
   const {
     status,
@@ -38,11 +45,6 @@ export default function MissionControlPage() {
               lastPacketSummary={lastPacketSummary}
               onUpdateControl={sendControl}
             />
-
-            {/* TODO: Remove this footer note when real backend integration is complete */}
-            <div className="mt-auto pt-6 text-[10px] text-slate-600 text-center pb-4">
-              Janus Project • Mission Control v1.0 • Mock Mode Active
-            </div>
           </div>
 
           {/* Right Column: Conversation (Expands) */}

@@ -1,10 +1,19 @@
 import React from 'react';
-import { JanusMode, TranscriptMessage, EmotionOverride } from '../types/janus';
+import { TranscriptMessage } from '../types/janus';
 
 type ConversationPanelProps = {
   transcripts: TranscriptMessage[];
 };
 
+/**
+ * Conversation panel component displaying transcript history and latest utterance.
+ * 
+ * Shows the most recent transcript message prominently with metadata badges,
+ * and provides a scrollable history list of all received transcripts.
+ * 
+ * @param props - Component props.
+ * @param props.transcripts - Array of transcript messages to display, ordered most recent first.
+ */
 export default function ConversationPanel({ transcripts }: ConversationPanelProps) {
   const lastMessage = transcripts[0];
 
@@ -29,15 +38,13 @@ export default function ConversationPanel({ transcripts }: ConversationPanelProp
             </p>
             
             <div className="flex flex-wrap gap-2">
-              <Badge label={new Date(lastMessage.timestamp).toLocaleTimeString()} color="slate" />
-              <Badge 
-                label={lastMessage.mode === 0 ? 'Semantic' : lastMessage.mode === 1 ? 'Text' : 'Morse'} 
-                color="blue" 
-              />
-              <Badge 
-                label={lastMessage.emotionOverride !== 'auto' ? `Forced: ${lastMessage.emotionOverride}` : (lastMessage.inferredEmotion || 'Auto')}
-                color={lastMessage.emotionOverride === 'panicked' ? 'red' : 'cyan'}
-              />
+              <Badge label={new Date(lastMessage.timestamp || Date.now()).toLocaleTimeString()} color="slate" />
+              {lastMessage.avg_pitch_hz && (
+                <Badge label={`Pitch: ${lastMessage.avg_pitch_hz.toFixed(0)}Hz`} color="blue" />
+              )}
+              {lastMessage.avg_energy && (
+                <Badge label={`Energy: ${lastMessage.avg_energy.toFixed(2)}`} color="cyan" />
+              )}
             </div>
           </div>
         ) : (
@@ -59,18 +66,20 @@ export default function ConversationPanel({ transcripts }: ConversationPanelProp
                     <div key={msg.id} className="flex gap-4 p-3 rounded-lg hover:bg-slate-800/50 transition-colors border border-transparent hover:border-slate-800">
                         <div className="flex-shrink-0 w-16 pt-1">
                             <div className="text-[10px] text-slate-500 font-mono">
-                                {new Date(msg.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second:'2-digit' })}
+                                {new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second:'2-digit' })}
                             </div>
                         </div>
                         <div className="flex-1 space-y-1">
                             <div className="text-sm text-slate-300">{msg.text}</div>
                             <div className="flex gap-2">
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-500 border border-slate-700">
-                                    Mode {msg.mode}
-                                </span>
-                                {(msg.inferredEmotion || msg.emotionOverride) && (
+                                {msg.avg_pitch_hz && (
                                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-500 border border-slate-700">
-                                        {msg.emotionOverride !== 'auto' ? msg.emotionOverride : msg.inferredEmotion}
+                                        Pitch: {msg.avg_pitch_hz.toFixed(0)}Hz
+                                    </span>
+                                )}
+                                {msg.avg_energy && (
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-500 border border-slate-700">
+                                        Energy: {msg.avg_energy.toFixed(2)}
                                     </span>
                                 )}
                             </div>
