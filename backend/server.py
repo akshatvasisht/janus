@@ -1,11 +1,14 @@
+# Standard library imports
 import asyncio
 import logging
 import threading
 from contextlib import asynccontextmanager
 
+# Third-party imports
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# Local imports
 from .api.endpoints import router as api_router
 from .api.socket_manager import router as ws_router
 from .common import engine_state

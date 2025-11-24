@@ -55,12 +55,10 @@ class ProsodyExtractor:
                 - 'energy': Volume level tag ('Quiet', 'Normal', or 'Loud')
                 - 'pitch': Pitch level tag ('Deep', 'Normal', or 'High')
                 
-        Note:
-            Pitch values of 0.0 (silence/unvoiced segments) are filtered out
-            before calculating the average. If no voiced segments are detected,
-            pitch defaults to 'Normal'.
+                Pitch values of 0.0 (silence/unvoiced segments) are filtered out
+                before calculating the average. If no voiced segments are detected,
+                pitch defaults to 'Normal'.
         """
-        # Ensure audio_buffer is numpy array
         if isinstance(audio_buffer, list):
             audio_buffer = np.concatenate(audio_buffer)
         

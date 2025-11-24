@@ -121,8 +121,7 @@ class LinkSimulator:
         during the simulated transmission delay.
         
         Args:
-            duration: Duration in seconds to simulate. Progress bar is divided
-                into 20 steps for smooth visualization.
+            duration: Duration in seconds to simulate.
         
         Returns:
             None

@@ -5,11 +5,14 @@ Provides global control state and event queues for communication between
 the WebSocket handlers and the Smart Ear engine loop.
 """
 
+# Standard library imports
 import asyncio
 from typing import Optional
 
+# Third-party imports
 from pydantic import BaseModel
 
+# Local imports
 from ..api.types import (
     EmotionOverride,
     JanusMode,
@@ -34,7 +37,6 @@ class ControlState(BaseModel):
 control_state = ControlState()
 
 # Queues for events emitted by the engine
-# We initialize them as None and create them on startup to ensure they bind to the correct loop
 transcript_queue: Optional[asyncio.Queue] = None
 packet_queue: Optional[asyncio.Queue] = None
 
@@ -68,8 +70,6 @@ def get_packet_queue() -> asyncio.Queue:
 def reset_queues() -> None:
     """
     Reset queues for testing purposes.
-    
-    Helper function for tests to reset queues between test runs.
     
     Returns:
         None

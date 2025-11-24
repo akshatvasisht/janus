@@ -5,12 +5,15 @@ Provides health check and voice verification endpoints for the Janus backend.
 Handles file uploads and voice cloning verification.
 """
 
+# Standard library imports
 import os
 from difflib import SequenceMatcher
 from pathlib import Path
 
+# Third-party imports
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
+# Local imports
 from ..services.transcriber import Transcriber
 
 router = APIRouter()
@@ -43,31 +46,24 @@ async def verify_voice(audio_file: UploadFile = File(...)) -> dict:
     Returns:
         dict: {"status": "verified"} on success, {"status": "failed", "transcript": "..."} on failure
     """
-    # Determine backend directory path
     backend_dir = Path(__file__).parent.parent
     temp_file_path = backend_dir / "temp_reference.wav"
     reference_file_path = backend_dir / "reference_audio.wav"
     
     try:
-        # Save uploaded file to temporary location
         with open(temp_file_path, "wb") as f:
             content = await audio_file.read()
             f.write(content)
         
-        # Transcribe the audio file
         transcriber = Transcriber()
         transcript = transcriber.transcribe_file(str(temp_file_path))
         
-        # Normalize for comparison (case-insensitive, strip punctuation)
         normalized_transcript = transcript.lower().strip()
         normalized_phrase = VERIFICATION_PHRASE.lower().strip()
         
-        # Calculate similarity using SequenceMatcher
         similarity = SequenceMatcher(None, normalized_transcript, normalized_phrase).ratio()
         
-        # Check if similarity meets threshold
         if similarity >= SIMILARITY_THRESHOLD:
-            # Save to persistent reference file
             with open(reference_file_path, "wb") as f:
                 f.write(content)
             
@@ -79,18 +75,15 @@ async def verify_voice(audio_file: UploadFile = File(...)) -> dict:
             }
     
     except Exception as e:
-        # Return error with transcript if available
         return {
             "status": "failed",
             "transcript": str(e) if "transcript" not in locals() else transcript
         }
     
     finally:
-        # Always clean up temporary file
         if temp_file_path.exists():
             try:
                 os.remove(temp_file_path)
             except Exception as e:
-                # Log but don't fail the request
                 print(f"Warning: Could not remove temp file {temp_file_path}: {e}")
 

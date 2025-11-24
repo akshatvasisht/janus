@@ -4,14 +4,17 @@ Purpose: Orchestrates the listening loop, decryption, synthesis, and playback.
          It acts as the "Server" in the demo, waiting for packets from the "Sender".
 """
 
+# Standard library imports
 import os
 import queue
 import socket
 import struct
 import threading
 
+# Third-party imports
 from dotenv import load_dotenv
 
+# Local imports
 from backend.common.protocol import JanusMode, JanusPacket
 from backend.services.audio_io import AudioService
 from backend.services.synthesizer import Synthesizer

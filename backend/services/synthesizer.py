@@ -256,13 +256,9 @@ class Synthesizer:
                     text=""
                 )]
             else:
-                # Fall back to generic voice (no reference)
                 api_params["references"] = None
             
-            # Call API directly (new API - no TTSRequest object needed)
             audio_bytes = self.client.tts.convert(**api_params)
-            
-            # New API returns complete audio bytes directly (not an iterator)
             return audio_bytes
         except Exception as e:
             # Return empty audio bytes on error

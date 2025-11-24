@@ -4,6 +4,10 @@ Purpose: Acts as the 'Gatekeeper'. Uses Silero-VAD to analyze audio chunks
          and determine if they contain human speech or just background noise.
 """
 
+# Standard library imports
+# (none)
+
+# Third-party imports
 import numpy as np
 import torch
 
@@ -74,9 +78,11 @@ class VoiceActivityDetector:
 
     def reset(self) -> None:
         """
-        Reset the model state (if using a stateful recurrent model).
+        Reset the model state.
         
-        Useful between distinct conversation turns. Silero VAD v4 is stateless,
-        so this method is a no-op but maintained for API consistency.
+        Maintained for API consistency. This method is a no-op for stateless models.
+        
+        Returns:
+            None
         """
         pass

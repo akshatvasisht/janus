@@ -25,8 +25,8 @@ class AudioService:
         and speaker playback. Configures audio parameters (44100Hz sample rate, 512 sample
         chunk size, mono channel) required for AI processing pipelines.
         
-        Gracefully handles hardware unavailability by running in silent/mock mode
-        if initialization fails.
+        Args:
+            None
         
         Returns:
             None
@@ -111,29 +111,23 @@ class AudioService:
         
         Returns:
             np.ndarray: A float32 array of audio samples normalized between -1.0 and 1.0.
-            Returns a zero-filled array if hardware is unavailable or on overflow.
-            This format is required by Silero VAD and Whisper processing pipelines.
+                Returns a zero-filled array if hardware is unavailable or on overflow.
+                This format is required by Silero VAD and Whisper processing pipelines.
         
         Raises:
             IOError: If the input stream overflows (handled internally by logging
-            and returning zero-filled data).
+                and returning zero-filled data).
         """
         if not self._pyaudio_available or self.input_stream is None:
-            # Return silent data if initialization failed or input stream failed to initialize
             return np.zeros(self.CHUNK_SIZE, dtype=np.float32)
         
         try:
-            # Read raw bytes from input stream
             raw_data = self.input_stream.read(self.CHUNK_SIZE, exception_on_overflow=False)
         except IOError as e:
-            # Handle overflow gracefully - log and return zeros
             print(f"Audio input overflow: {e}")
-            raw_data = b'\x00' * (self.CHUNK_SIZE * 2)  # 2 bytes per sample (int16)
+            raw_data = b'\x00' * (self.CHUNK_SIZE * 2)
         
-        # Convert bytes to numpy array (int16)
         audio_int16 = np.frombuffer(raw_data, dtype=np.int16)
-        
-        # Convert to float32 normalized between -1.0 and 1.0
         audio_float32 = audio_int16.astype(np.float32) / 32768.0
         
         return audio_float32
@@ -155,24 +149,18 @@ class AudioService:
             None
         """
         if not self._pyaudio_available or self.output_stream is None:
-            # Skip writing if no hardware is available or output stream failed to initialize
             return
         
-        # Convert numpy array to int16 if needed
         if isinstance(audio_data, np.ndarray):
             if audio_data.dtype == np.float32:
-                # Normalize from -1.0 to 1.0 range to int16
                 audio_data = (audio_data * 32768.0).astype(np.int16)
             elif audio_data.dtype != np.int16:
                 audio_data = audio_data.astype(np.int16)
             
-            # Convert to bytes
             audio_bytes = audio_data.tobytes()
         else:
-            # Assume it's already bytes
             audio_bytes = audio_data
         
-        # Write to output stream
         self.output_stream.write(audio_bytes)
 
     def close(self) -> None:
@@ -182,6 +170,9 @@ class AudioService:
         Stops and closes all audio streams (input and output), then terminates
         the PyAudio instance. Errors during cleanup are silently ignored to ensure
         resources are released even if streams are in an invalid state.
+        
+        Returns:
+            None
         """
         if self.input_stream is not None:
             try:

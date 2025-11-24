@@ -54,19 +54,16 @@ class Transcriber:
         
         audio_16k = audio_buffer[::3]
         
-        # Transcribe with beam_size=1 for lowest latency
         segments, info = self.model.transcribe(
             audio_16k,
             beam_size=1,
             language='en'
         )
         
-        # Aggregate segments into a single text string
         text_parts = []
         for segment in segments:
             text_parts.append(segment.text.strip())
         
-        # Join and return trimmed text
         full_text = ' '.join(text_parts).strip()
         return full_text
 
@@ -75,7 +72,6 @@ class Transcriber:
         Transcribes an audio file directly from disk.
         
         Faster-Whisper handles format conversions (WebM/WAV/MP3/etc) automatically.
-        Uses greedy search for lowest latency.
         
         Args:
             file_path: Path to the audio file. Supports various formats including
@@ -85,18 +81,15 @@ class Transcriber:
             str: Transcribed text string with whitespace normalized.
                 Returns empty string if no speech is detected.
         """
-        # Transcribe with beam_size=1 for lowest latency
         segments, info = self.model.transcribe(
             file_path,
             beam_size=1,
             language='en'
         )
         
-        # Aggregate segments into a single text string
         text_parts = []
         for segment in segments:
             text_parts.append(segment.text.strip())
         
-        # Join and return trimmed text
         full_text = ' '.join(text_parts).strip()
         return full_text

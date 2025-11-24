@@ -5,13 +5,16 @@ Purpose: Orchestrates the Audio, VAD, Transcription, and Prosody services.
          Uses Producer-Consumer pattern to prevent PyAudio buffer overflow.
 """
 
+# Standard library imports
 import os
 import queue
 import threading
 import time
 
+# Third-party imports
 import numpy as np
 
+# Local imports
 from backend.common.protocol import JanusMode, JanusPacket
 from backend.services.audio_io import AudioService
 from backend.services.link_simulator import LinkSimulator

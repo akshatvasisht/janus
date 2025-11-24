@@ -5,10 +5,12 @@ Purpose: Defines the 'Janus Packet' structure and handles the binary serializati
          It uses MessagePack to ensure the payload is as small as possible.
 """
 
+# Standard library imports
 import enum
 import time
 from typing import Optional
 
+# Third-party imports
 import msgpack
 
 
@@ -39,11 +41,14 @@ class JanusPacket:
         Initialize a Janus Packet.
         
         Args:
-            text: The transcribed text content (str)
-            mode: Transmission mode (JanusMode enum)
-            prosody: Prosody metadata dictionary (dict with 'energy' and 'pitch')
-            override_emotion: Optional override emotion (str: "Auto", "Relaxed", "Panicked")
-            timestamp: Optional timestamp (float). If None, uses current time.
+            text: The transcribed text content.
+            mode: Transmission mode (JanusMode enum).
+            prosody: Prosody metadata dictionary with 'energy' and 'pitch' keys.
+            override_emotion: Optional override emotion. Defaults to "Auto".
+            timestamp: Optional timestamp. If None, uses current time.
+        
+        Returns:
+            None
         """
         self.text = text
         self.mode = mode
@@ -62,12 +67,11 @@ class JanusPacket:
         """
         result = {
             't': self.text,
-            'm': int(self.mode),  # Convert enum to int for serialization
+            'm': int(self.mode),
             'p': self.prosody,
             'ts': self.timestamp
         }
         
-        # Only include override_emotion if it's not "Auto"
         if self.override_emotion != "Auto":
             result['o'] = self.override_emotion
         

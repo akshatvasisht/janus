@@ -5,11 +5,14 @@ Handles WebSocket connections, receives control messages from the frontend,
 and forwards transcript and packet summary events from the engine to the frontend.
 """
 
+# Standard library imports
 import asyncio
 import json
 
+# Third-party imports
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+# Local imports
 from ..common import engine_state
 from .types import ControlMessage, JanusOutboundMessage
 
@@ -36,23 +39,19 @@ async def janus_ws(websocket: WebSocket) -> None:
     send_task = asyncio.create_task(_send_loop(websocket))
 
     try:
-        # Wait for either task to finish (usually recv_loop ends on disconnect)
         done, pending = await asyncio.wait(
             [recv_task, send_task], return_when=asyncio.FIRST_COMPLETED
         )
 
-        # Cancel whichever is still running
         for task in pending:
             task.cancel()
 
-        # Check for exceptions in the done task
         for task in done:
             try:
                 task.result()
             except asyncio.CancelledError:
                 pass
             except WebSocketDisconnect:
-                # Normal disconnect
                 pass
             except Exception as e:
                 print(f"Task failed: {e}")
@@ -60,7 +59,6 @@ async def janus_ws(websocket: WebSocket) -> None:
     except Exception as e:
         print(f"WebSocket handler error: {e}")
     finally:
-        # Ensure everything is cleaned up
         recv_task.cancel()
         send_task.cancel()
 
@@ -84,7 +82,6 @@ async def _recv_loop(websocket: WebSocket) -> None:
                 msg = ControlMessage(**data)
                 _apply_control_message(msg)
     except WebSocketDisconnect:
-        # Normal closure
         raise
     except asyncio.CancelledError:
         raise

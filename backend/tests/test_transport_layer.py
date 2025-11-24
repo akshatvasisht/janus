@@ -3,19 +3,23 @@ Test Suite for Phase 3 Transport Layer Components
 Tests JanusPacket (Protocol) and LinkSimulator (Network Throttling)
 """
 
-import pytest
-import struct
-import time
-import socket
-from unittest.mock import Mock, MagicMock, patch, call
-import sys
+# Standard library imports
 import os
+import socket
+import struct
+import sys
+import time
+from unittest.mock import MagicMock, Mock, call, patch
+
+# Third-party imports
+import pytest
 
 # Add project root to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
-from backend.common.protocol import JanusPacket, JanusMode
-from backend.services.link_simulator import LinkSimulator, BYTES_PER_SECOND
+# Local imports
+from backend.common.protocol import JanusMode, JanusPacket
+from backend.services.link_simulator import BYTES_PER_SECOND, LinkSimulator
 
 
 # ============================================================================
