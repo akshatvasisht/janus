@@ -11,9 +11,16 @@ class ProsodyExtractor:
     def __init__(self, sample_rate=44100, hop_size=512):
         """
         Initialize Aubio analyzers.
-        1. Create a Pitch detection object (method='yin' or 'yinfft').
-           - Set tolerance and unit (Hz).
-        2. Store sample rate and hop size for calculations.
+        
+        Creates a pitch detection object using the YIN algorithm for fundamental
+        frequency (F0) extraction. Configures tolerance and unit settings for
+        accurate pitch analysis.
+        
+        Args:
+            sample_rate: Audio sample rate in Hz. Default is 44100 Hz.
+            hop_size: Analysis hop size in samples. Default is 512 samples.
+                Smaller values provide higher temporal resolution at the cost
+                of increased computation.
         """
         self.sample_rate = sample_rate
         self.hop_size = hop_size
@@ -23,31 +30,28 @@ class ProsodyExtractor:
         self.pitch_detector.set_unit('Hz')
         self.pitch_detector.set_tolerance(0.8)
 
-    def analyze_buffer(self, audio_buffer):
+    def analyze_buffer(self, audio_buffer) -> dict[str, str]:
         """
         Analyzes a full phrase buffer to extract average prosody metrics.
 
+        Computes energy (RMS-based volume) and pitch (fundamental frequency F0)
+        from the audio buffer. Processes the buffer in chunks using Aubio's
+        streaming interface to extract pitch values, then aggregates results
+        into categorical tags.
+
         Args:
-            audio_buffer: Numpy array of the spoken phrase.
+            audio_buffer: Numpy array of float32 audio samples representing
+                the spoken phrase. Should be normalized between -1.0 and 1.0.
 
-        Steps:
-        1. Calculate ENERGY (Volume):
-           - Compute Root Mean Square (RMS) of the buffer.
-           - Map RMS to a simple scale (0-10) or tags (Quiet, Normal, Loud).
-        
-        2. Calculate PITCH (Tone):
-           - Since Aubio processes streams, iterate through the buffer in chunks.
-           - For each chunk, get the fundamental frequency (F0).
-           - Filter out 0.0 values (silence/unvoiced).
-           - Calculate the average F0 of the voiced segments.
-           - Map average F0 to tags (Deep, Normal, High/Excited).
-
-        3. Return a metadata dictionary:
-           {
-               'energy': 'High',
-               'pitch': 'Normal',
-               'speed': 'Fast' (Optional: calculated by duration vs word count later)
-           }
+        Returns:
+            dict[str, str]: Metadata dictionary with keys:
+                - 'energy': Volume level tag ('Quiet', 'Normal', or 'Loud')
+                - 'pitch': Pitch level tag ('Deep', 'Normal', or 'High')
+                
+        Note:
+            Pitch values of 0.0 (silence/unvoiced segments) are filtered out
+            before calculating the average. If no voiced segments are detected,
+            pitch defaults to 'Normal'.
         """
         # Ensure audio_buffer is numpy array
         if isinstance(audio_buffer, list):

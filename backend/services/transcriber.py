@@ -11,10 +11,14 @@ class Transcriber:
     def __init__(self, model_size='base.en'):
         """
         Initialize the Whisper Model.
-        1. Load 'faster-whisper' model (e.g., 'distil-small.en' or 'base.en').
-        2. CONFIGURATION CRITICAL:
-           - Set device='cpu' (assuming hackathon laptop).
-           - Set compute_type='int8' (Quantization for speed).
+        
+        Loads a Faster-Whisper model optimized for CPU inference with Int8
+        quantization. This configuration provides a balance between accuracy
+        and performance for wider hardware compatibility.
+        
+        Args:
+            model_size: Model size identifier (e.g., 'base.en', 'distil-small.en').
+                Default is 'base.en' for English-only transcription.
         """
         self.model = WhisperModel(
             model_size,
@@ -22,19 +26,22 @@ class Transcriber:
             compute_type='int8'
         )
 
-    def transcribe_buffer(self, audio_buffer):
+    def transcribe_buffer(self, audio_buffer) -> str:
         """
         Converts a collected buffer of speech into text.
 
         Args:
-            audio_buffer: A large numpy array containing the full spoken phrase (assumed 44100 Hz).
+            audio_buffer: A numpy array containing the full spoken phrase.
+                Assumed to be sampled at 44100 Hz. Will be automatically
+                downsampled to 16kHz for Whisper processing.
 
-        Steps:
-        1. Downsample audio from 44.1k to 16k (Whisper expects 16k).
-        2. Run model.transcribe() on the downsampled audio_buffer.
-        3. Set beam_size=1 (Greedy search) for lowest latency.
-        4. Aggregate the segments into a single text string.
-        5. Return the text string.
+        Returns:
+            str: Transcribed text string with whitespace normalized.
+                Returns empty string if no speech is detected.
+        
+        Note:
+            Uses greedy search (beam_size=1) for lowest latency. Audio is
+            downsampled from 44.1kHz to 16kHz by taking every 3rd sample.
         """
         # Ensure audio is float32 numpy array
         if isinstance(audio_buffer, list):
@@ -68,16 +75,20 @@ class Transcriber:
         full_text = ' '.join(text_parts).strip()
         return full_text
 
-    def transcribe_file(self, file_path):
+    def transcribe_file(self, file_path: str) -> str:
         """
         Transcribes an audio file directly from disk.
-        Faster-Whisper handles format conversions (WebM/WAV/etc) automatically.
+        
+        Faster-Whisper handles format conversions (WebM/WAV/MP3/etc) automatically.
+        Uses greedy search for lowest latency.
         
         Args:
-            file_path: Path to the audio file (supports various formats including WAV, WebM, MP3, etc.)
+            file_path: Path to the audio file. Supports various formats including
+                WAV, WebM, MP3, and others supported by FFmpeg.
         
         Returns:
-            str: Transcribed text string
+            str: Transcribed text string with whitespace normalized.
+                Returns empty string if no speech is detected.
         """
         # Transcribe with beam_size=1 for lowest latency
         segments, info = self.model.transcribe(

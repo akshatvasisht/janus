@@ -1,41 +1,47 @@
 import asyncio
-import queue
-import threading
-import time
-import numpy as np
 import logging
 import os
+import queue
 import socket
 import struct
+import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
+from typing import TYPE_CHECKING
 
+import numpy as np
+
+from ..api.types import JanusMode, PacketSummaryMessage, TranscriptMessage
 from ..common import engine_state
-from ..common.protocol import JanusPacket, JanusMode as ProtocolJanusMode
-from ..api.types import TranscriptMessage, PacketSummaryMessage, JanusMode
+from ..common.protocol import JanusMode as ProtocolJanusMode, JanusPacket
 
-# Import services
-# Note: adjusting relative imports based on file location (backend/services/engine.py)
 from .audio_io import AudioService
-from .vad import VoiceActivityDetector
-from .transcriber import Transcriber
-from .prosody import ProsodyExtractor
 from .link_simulator import LinkSimulator
+from .prosody import ProsodyExtractor
 from .synthesizer import Synthesizer
+from .transcriber import Transcriber
+from .vad import VoiceActivityDetector
+
+if TYPE_CHECKING:
+    from types import ModuleType
 
 logger = logging.getLogger(__name__)
 
 
-def recv_exact(sock, n):
+def recv_exact(sock: socket.socket, n: int) -> bytes | None:
     """
     Helper function to receive exactly n bytes from a socket.
-    Handles fragmented reads that can occur with TCP.
+    
+    Handles fragmented reads that can occur with TCP by repeatedly reading
+    until the requested number of bytes is received.
     
     Args:
-        sock: The socket to read from
-        n: Number of bytes to read
+        sock: The socket to read from.
+        n: Number of bytes to read.
         
     Returns:
-        bytes: Exactly n bytes, or None if connection closed
+        bytes | None: Exactly n bytes, or None if connection is closed
+            before all bytes are received.
     """
     data = b''
     while len(data) < n:
@@ -46,16 +52,22 @@ def recv_exact(sock, n):
     return data
 
 
-def playback_worker(audio_service, playback_queue, stop_event):
+def playback_worker(
+    audio_service: AudioService,
+    playback_queue: queue.Queue[bytes],
+    stop_event: threading.Event,
+) -> None:
     """
     Playback thread worker function.
-    Continuously pulls audio bytes from queue and plays them.
-    Prevents blocking the main receiver loop.
+    
+    Continuously pulls audio bytes from queue and plays them. Prevents blocking
+    the main receiver loop by running in a separate thread.
     
     Args:
-        audio_service: AudioService instance for playback
-        playback_queue: Queue containing audio bytes to play
-        stop_event: Threading event to signal shutdown
+        audio_service: AudioService instance for playback.
+        playback_queue: Queue containing audio bytes to play.
+        stop_event: Threading event to signal shutdown. Worker exits when
+            this event is set.
     """
     while not stop_event.is_set():
         try:
@@ -76,15 +88,21 @@ def playback_worker(audio_service, playback_queue, stop_event):
             playback_queue.task_done()
 
 
-def receiver_loop(audio_service, stop_event, event_loop):
+def receiver_loop(
+    audio_service: AudioService,
+    stop_event: threading.Event,
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
     """
     Receiver loop for full-duplex audio.
+    
     Listens for TCP connections, receives JanusPackets, synthesizes audio, and plays it.
+    Runs in a separate thread to avoid blocking the main event loop.
     
     Args:
-        audio_service: Shared AudioService instance for playback
-        stop_event: Threading event to signal shutdown
-        event_loop: asyncio event loop for emitting events to frontend
+        audio_service: Shared AudioService instance for playback.
+        stop_event: Threading event to signal shutdown. Loop exits when set.
+        event_loop: asyncio event loop for emitting events to frontend.
     """
     # 1. SETUP
     api_key = os.getenv("FISH_AUDIO_API_KEY")
@@ -318,9 +336,21 @@ def map_protocol_mode_to_api_mode(protocol_mode: ProtocolJanusMode) -> JanusMode
     return mapping.get(protocol_mode, JanusMode.SEMANTIC)
 
 
-def audio_producer(audio_service, audio_queue, stop_event):
+def audio_producer(
+    audio_service: AudioService,
+    audio_queue: queue.Queue[np.ndarray],
+    stop_event: threading.Event,
+) -> None:
     """
-    Thread A (Producer): Continuously reads audio chunks.
+    Audio producer thread worker function.
+    
+    Continuously reads audio chunks from the audio service and places them
+    in the queue for processing. Runs until stop_event is set.
+    
+    Args:
+        audio_service: AudioService instance for reading audio input.
+        audio_queue: Queue for storing audio chunks (numpy arrays).
+        stop_event: Threading event to signal shutdown. Producer exits when set.
     """
     while not stop_event.is_set():
         try:
@@ -510,18 +540,16 @@ async def smart_ear_loop(
                     # This keeps the WS alive but blocks the next audio chunk processing
                     await loop.run_in_executor(executor, transmit_packet_blocking)
 
-                    # Construct messages
-                    # Map 'energy'/'pitch' strings/values to float if needed,
-                    # but for now existing prosody returns dict.
-                    # Types.py expects floats for avg_pitch_hz/energy if available.
-                    # Let's check what prosody.py actually returns.
-                    # Assuming it returns readable strings or values.
-                    # We'll try to parse or just leave None for now if incompatible.
-
+                    # Extract numeric prosody values if available in meta
+                    # Prosody extractor returns categorical tags ('High', 'Normal', etc.)
+                    # Numeric extraction would require additional processing of raw audio
+                    avg_pitch_hz = None
+                    avg_energy = None
+                    
                     await _emit_events(
                         text=text,
-                        avg_pitch_hz=None,  # TODO: Extract actual float from meta if available
-                        avg_energy=None,
+                        avg_pitch_hz=avg_pitch_hz,
+                        avg_energy=avg_energy,
                         mode=control_state.mode,
                         transcript_queue=transcript_queue,
                         packet_queue=packet_queue,

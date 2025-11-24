@@ -9,33 +9,34 @@ Purpose: The 'Brain' of the receiver. It converts the received 'JanusPacket'
          4. Sine wave generation for Morse Code (Stretch Goal).
 """
 
+import os
+from pathlib import Path
+
+import numpy as np
+from fishaudio import FishAudio
+from fishaudio.types import ReferenceAudio
+
+from ..common.protocol import JanusMode, JanusPacket
+
 # Audio format constants
 SAMPLE_RATE = 44100  # Hz
 MORSE_FREQUENCY = 800  # Hz for Morse code beeps
 
-# Import Fish Audio SDK (new API)
-from fishaudio import FishAudio
-from fishaudio.types import ReferenceAudio
-
-# Import Numpy (for Morse Code math)
-import numpy as np
-
-# Import Enum (JanusMode)
-from ..common.protocol import JanusMode
-
-# Import os for path operations and hot-reload
-import os
-from pathlib import Path
-
 class Synthesizer:
-    def __init__(self, api_key, reference_audio_path=None):
+    def __init__(self, api_key: str, reference_audio_path: str | None = None):
         """
         Initialize the Synthesizer.
-        1. Setup Fish Audio Client with API Key.
-        2. Load the 'Reference Audio' file into memory (bytes).
-           - This is the "Voice ID" we are cloning.
-           - If no file provided, use a default system ID.
-        3. Define Morse Code Dictionary (A=.-, B=-..., etc).
+        
+        Sets up the Fish Audio SDK client with the provided API key and loads
+        reference audio for voice cloning. If no reference audio path is provided,
+        uses a default path in the backend directory. Supports hot-reload of
+        reference audio files without restarting the service.
+        
+        Args:
+            api_key: Fish Audio API key for authentication.
+            reference_audio_path: Optional path to reference audio file for
+                voice cloning. If None, uses default path 'backend/reference_audio.wav'.
+                The reference audio serves as the "Voice ID" for cloning.
         """
         # Initialize Fish Audio SDK client (new API)
         self.client = FishAudio(api_key=api_key)
@@ -72,12 +73,12 @@ class Synthesizer:
             ' ': ' '  # Space between words
         }
     
-    def _load_reference_audio(self, audio_path):
+    def _load_reference_audio(self, audio_path: str) -> None:
         """
         Load reference audio file and store its modification time for hot-reload.
         
         Args:
-            audio_path: Path to the reference audio file
+            audio_path: Path to the reference audio file.
         """
         try:
             if os.path.exists(audio_path):
@@ -96,11 +97,12 @@ class Synthesizer:
             self._reference_audio_mtime = None
             # Keep _reference_audio_path set even on error for future retries
     
-    def _check_and_reload_reference_audio(self):
+    def _check_and_reload_reference_audio(self) -> None:
         """
         Check if reference audio file has changed and reload if necessary.
-        This enables hot-reload without server restart.
-        Also detects if file appears for the first time (wasn't present at startup).
+        
+        This enables hot-reload without server restart. Also detects if file
+        appears for the first time (wasn't present at startup).
         """
         if self._reference_audio_path:
             if os.path.exists(self._reference_audio_path):
@@ -111,15 +113,23 @@ class Synthesizer:
                     self._load_reference_audio(self._reference_audio_path)
             # If file doesn't exist yet, do nothing (will be checked again on next call)
 
-    def synthesize(self, packet):
+    def synthesize(self, packet: JanusPacket) -> bytes:
         """
         Main entry point. Routing logic based on Packet Mode.
         
+        Routes synthesis to the appropriate method based on packet mode:
+        - MORSE_CODE: Generates sine wave tones
+        - TEXT_ONLY: Uses fast TTS with optional emotion override
+        - SEMANTIC_VOICE: Uses generative AI with dynamic emotion prompting
+        
         Args:
-            packet (JanusPacket): The deserialized data.
+            packet: The deserialized JanusPacket containing text, mode, and metadata.
             
         Returns:
-            bytes: Raw PCM audio data ready for PyAudio.
+            bytes: Raw PCM audio data ready for PyAudio playback.
+        
+        Raises:
+            ValueError: If packet mode is unknown or unsupported.
         """
         if packet.mode == JanusMode.MORSE_CODE:
             return self._generate_morse_audio(packet.text)
@@ -130,9 +140,21 @@ class Synthesizer:
         else:
             raise ValueError(f"Unknown packet mode: {packet.mode}")
 
-    def _generate_semantic_audio(self, packet):
+    def _generate_semantic_audio(self, packet: JanusPacket) -> bytes:
         """
-        The Core Feature: Generative AI Voice.
+        Generates semantic voice audio using generative AI.
+        
+        Uses Fish Audio SDK to synthesize speech with emotion tags derived from
+        prosody analysis or manual override. Supports voice cloning via reference
+        audio when available.
+        
+        Args:
+            packet: JanusPacket containing text, prosody metadata, and optional
+                emotion override.
+        
+        Returns:
+            bytes: Raw PCM audio data (WAV format) ready for PyAudio playback.
+                Falls back to fast TTS if API call fails.
         """
         # Check for hot-reload of reference audio
         self._check_and_reload_reference_audio()
@@ -214,15 +236,22 @@ class Synthesizer:
             print(f"Synthesis error: {e}")
             return self._generate_fast_tts(packet.text, packet.override_emotion)
 
-    def _generate_fast_tts(self, text, emotion=None):
+    def _generate_fast_tts(self, text: str, emotion: str | None = None) -> bytes:
         """
-        Fallback mode. Saves API credits/latency.
-        Could use a cheaper Fish Audio model or a local system TTS.
-        Uses cloned voice if available, otherwise falls back to generic voice.
+        Fallback TTS mode for reduced API cost and latency.
+        
+        Uses Fish Audio SDK with balanced latency settings. Supports cloned voice
+        if reference audio is available, otherwise falls back to generic voice.
+        Can be used as a fallback when semantic voice synthesis fails.
         
         Args:
-            text: Text to synthesize
-            emotion: Optional emotion override (e.g., "joyful", "panicked")
+            text: Text string to synthesize.
+            emotion: Optional emotion override tag (e.g., "joyful", "panicked").
+                If None or "Auto", emotion tag is omitted from the prompt.
+        
+        Returns:
+            bytes: Raw PCM audio data (WAV format) ready for PyAudio playback.
+                Returns empty bytes if synthesis fails.
         """
         # Check for hot-reload of reference audio
         self._check_and_reload_reference_audio()
@@ -262,18 +291,21 @@ class Synthesizer:
             print(f"Fast TTS error: {e}")
             return b''
 
-    def _generate_morse_audio(self, text):
+    def _generate_morse_audio(self, text: str) -> bytes:
         """
-        Stretch Goal: Turn text into sine waves.
+        Generates Morse code audio from text using sine wave tones.
         
-        Logic:
-        1. Iterate chars in text.
-        2. Look up Morse pattern (e.g., ".-").
-        3. For '.': Generate 0.1s sine wave (800Hz).
-        4. For '-': Generate 0.3s sine wave (800Hz).
-        5. Add silence between beeps.
-        6. Concatenate all numpy arrays.
-        7. Convert to bytes and return.
+        Converts text characters to Morse code patterns and generates corresponding
+        audio tones. Dots (.) produce 0.1s tones, dashes (-) produce 0.3s tones,
+        both at 800Hz. Appropriate silence is inserted between symbols, letters,
+        and words.
+        
+        Args:
+            text: Text string to convert to Morse code audio.
+        
+        Returns:
+            bytes: Raw PCM audio data (int16 format) ready for PyAudio playback.
+                Returns empty bytes if text is empty or contains no valid characters.
         """
         audio_segments = []
         

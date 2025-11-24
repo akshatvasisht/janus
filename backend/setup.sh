@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 echo "--- [1/3] Installing System Dependencies (Requires Sudo) ---"
 # Update apt and install the C headers required for compilation
 sudo apt update
