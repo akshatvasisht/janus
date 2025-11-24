@@ -1,4 +1,3 @@
-import React from 'react';
 import { TranscriptMessage } from '../types/janus';
 
 type ConversationPanelProps = {
