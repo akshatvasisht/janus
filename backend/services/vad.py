@@ -8,7 +8,7 @@ import torch
 import numpy as np
 
 class VoiceActivityDetector:
-    def __init__(self, threshold=0.5, sample_rate=44100):
+    def __init__(self, threshold: float = 0.5, sample_rate: int = 44100) -> None:
         """
         Initialize the VAD Model.
         
@@ -37,7 +37,7 @@ class VoiceActivityDetector:
         # Set model to evaluation mode
         self.model.eval()
 
-    def is_speech(self, audio_chunk) -> bool:
+    def is_speech(self, audio_chunk: np.ndarray) -> bool:
         """
         Analyzes a single audio chunk to detect speech.
 

@@ -18,10 +18,19 @@ from backend.services.prosody import ProsodyExtractor
 from backend.common.protocol import JanusPacket, JanusMode
 from backend.services.link_simulator import LinkSimulator
 
-def audio_producer(audio_service, audio_queue, stop_event):
+def audio_producer(
+    audio_service: AudioService,
+    audio_queue: queue.Queue[np.ndarray],
+    stop_event: threading.Event,
+) -> None:
     """
     Thread A (Producer - "The Ear"): Continuously reads audio chunks and puts them in queue.
     Never stops reading to prevent PyAudio buffer overflow.
+    
+    Args:
+        audio_service: AudioService instance for reading audio input.
+        audio_queue: Queue for storing audio chunks (numpy arrays).
+        stop_event: Threading event to signal shutdown. Producer exits when set.
     """
     while not stop_event.is_set():
         try:
@@ -37,9 +46,26 @@ def audio_producer(audio_service, audio_queue, stop_event):
             # Continue reading even on error to prevent buffer overflow
 
 
-def audio_consumer(audio_service, vad_model, transcriber, prosody_tool, link_simulator, audio_queue, stop_event):
+def audio_consumer(
+    audio_service: AudioService,
+    vad_model: VoiceActivityDetector,
+    transcriber: Transcriber,
+    prosody_tool: ProsodyExtractor,
+    link_simulator: LinkSimulator,
+    audio_queue: queue.Queue[np.ndarray],
+    stop_event: threading.Event,
+) -> None:
     """
     Thread B (Consumer - "The Brain"): Processes audio chunks with hybrid trigger logic.
+    
+    Args:
+        audio_service: AudioService instance for reading audio input.
+        vad_model: VoiceActivityDetector instance for speech detection.
+        transcriber: Transcriber instance for speech-to-text conversion.
+        prosody_tool: ProsodyExtractor instance for emotion metadata extraction.
+        link_simulator: LinkSimulator instance for packet transmission.
+        audio_queue: Queue containing audio chunks (numpy arrays) to process.
+        stop_event: Threading event to signal shutdown. Consumer exits when set.
     """
     # Initialize state flags (Controlled by UI via WebSocket later)
     is_streaming_mode = True  # Toggle Mode (Green Button)
@@ -170,7 +196,7 @@ def audio_consumer(audio_service, vad_model, transcriber, prosody_tool, link_sim
             audio_queue.task_done()
 
 
-def main_loop():
+def main_loop() -> None:
     """
     Main entry point: Sets up Producer-Consumer threads and manages lifecycle.
     """

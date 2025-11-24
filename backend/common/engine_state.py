@@ -44,7 +44,7 @@ def get_packet_queue() -> asyncio.Queue:
     return packet_queue
 
 
-def reset_queues():
+def reset_queues() -> None:
     """Helper for tests to reset queues between runs"""
     global transcript_queue, packet_queue
     transcript_queue = asyncio.Queue()

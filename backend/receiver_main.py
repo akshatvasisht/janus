@@ -16,17 +16,18 @@ from backend.services.audio_io import AudioService
 from backend.services.synthesizer import Synthesizer
 
 
-def recv_exact(sock, n):
+def recv_exact(sock: socket.socket, n: int) -> bytes | None:
     """
     Helper function to receive exactly n bytes from a socket.
     Handles fragmented reads that can occur with TCP.
     
     Args:
-        sock: The socket to read from
-        n: Number of bytes to read
+        sock: The socket to read from.
+        n: Number of bytes to read.
         
     Returns:
-        bytes: Exactly n bytes, or None if connection closed
+        bytes | None: Exactly n bytes, or None if connection closed
+            before all bytes are received.
     """
     data = b''
     while len(data) < n:
@@ -37,16 +38,21 @@ def recv_exact(sock, n):
     return data
 
 
-def playback_worker(audio_service, playback_queue, stop_event):
+def playback_worker(
+    audio_service: AudioService,
+    playback_queue: queue.Queue[bytes],
+    stop_event: threading.Event,
+) -> None:
     """
     Playback thread worker function.
     Continuously pulls audio bytes from queue and plays them.
     Prevents blocking the main receiver loop.
     
     Args:
-        audio_service: AudioService instance for playback
-        playback_queue: Queue containing audio bytes to play
-        stop_event: Threading event to signal shutdown
+        audio_service: AudioService instance for playback.
+        playback_queue: Queue containing audio bytes to play.
+        stop_event: Threading event to signal shutdown. Worker exits when
+            this event is set.
     """
     while not stop_event.is_set():
         try:
@@ -67,9 +73,12 @@ def playback_worker(audio_service, playback_queue, stop_event):
             playback_queue.task_done()
 
 
-def receiver_loop():
+def receiver_loop() -> None:
     """
-    Main Entry Point.
+    Main entry point for receiver loop.
+    
+    Orchestrates the listening loop, packet deserialization, synthesis, and playback.
+    Loads configuration from environment variables and initializes required services.
     """
     # Load environment variables
     load_dotenv()

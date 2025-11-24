@@ -9,7 +9,7 @@ router = APIRouter()
 
 
 @router.websocket("/ws/janus")
-async def janus_ws(websocket: WebSocket):
+async def janus_ws(websocket: WebSocket) -> None:
     """
     Bi-directional WebSocket for Janus.
     - Receives ControlMessage from frontend, updates engine_state.control_state
@@ -50,7 +50,7 @@ async def janus_ws(websocket: WebSocket):
         send_task.cancel()
 
 
-async def _recv_loop(websocket: WebSocket):
+async def _recv_loop(websocket: WebSocket) -> None:
     """
     Receive ControlMessage payloads from frontend and update control_state.
     """
@@ -71,7 +71,7 @@ async def _recv_loop(websocket: WebSocket):
         print(f"Error in recv loop: {e}")
 
 
-def _apply_control_message(msg: ControlMessage):
+def _apply_control_message(msg: ControlMessage) -> None:
     """
     Update engine_state.control_state with non-None fields
     from a ControlMessage.
@@ -93,7 +93,7 @@ def _apply_control_message(msg: ControlMessage):
     print(f"Control State Updated: {state}")
 
 
-async def _send_loop(websocket: WebSocket):
+async def _send_loop(websocket: WebSocket) -> None:
     """
     Drain transcript_queue and packet_queue and forward to frontend.
     """
@@ -124,7 +124,7 @@ async def _send_loop(websocket: WebSocket):
         print(f"Error in send loop: {e}")
 
 
-async def _send_event(websocket: WebSocket, event: JanusOutboundMessage):
+async def _send_event(websocket: WebSocket, event: JanusOutboundMessage) -> None:
     """
     Serialize a Pydantic outbound message to JSON and send over WebSocket.
     """

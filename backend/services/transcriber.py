@@ -8,7 +8,7 @@ from faster_whisper import WhisperModel
 import numpy as np
 
 class Transcriber:
-    def __init__(self, model_size='base.en'):
+    def __init__(self, model_size: str = 'base.en') -> None:
         """
         Initialize the Whisper Model.
         
@@ -26,7 +26,7 @@ class Transcriber:
             compute_type='int8'
         )
 
-    def transcribe_buffer(self, audio_buffer) -> str:
+    def transcribe_buffer(self, audio_buffer: np.ndarray) -> str:
         """
         Converts a collected buffer of speech into text.
 

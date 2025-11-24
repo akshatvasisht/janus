@@ -8,6 +8,7 @@ Purpose: Defines the 'Janus Packet' structure and handles the binary serializati
 import msgpack
 import enum
 import time
+from typing import Optional
 
 
 class JanusMode(enum.IntEnum):
@@ -25,7 +26,14 @@ class JanusPacket:
     Uses compact keys to minimize payload size.
     """
     
-    def __init__(self, text, mode, prosody, override_emotion=None, timestamp=None):
+    def __init__(
+        self,
+        text: str,
+        mode: JanusMode,
+        prosody: dict[str, str],
+        override_emotion: Optional[str] = None,
+        timestamp: Optional[float] = None,
+    ) -> None:
         """
         Initialize a Janus Packet.
         
@@ -42,7 +50,7 @@ class JanusPacket:
         self.override_emotion = override_emotion if override_emotion is not None else "Auto"
         self.timestamp = timestamp if timestamp is not None else time.time()
     
-    def to_dict(self):
+    def to_dict(self) -> dict:
         """
         Convert class attributes into a raw dictionary for serialization.
         Uses short keys to minimize payload size.
@@ -64,7 +72,7 @@ class JanusPacket:
         return result
     
     @classmethod
-    def from_dict(cls, data):
+    def from_dict(cls, data: dict) -> "JanusPacket":
         """
         Reconstruct the Packet object from a raw dictionary.
         
@@ -82,7 +90,7 @@ class JanusPacket:
         
         return cls(text, mode, prosody, override_emotion, timestamp)
     
-    def serialize(self):
+    def serialize(self) -> bytes:
         """
         Convert the Packet object into a compact binary byte string.
         Uses MessagePack for efficient serialization.
@@ -94,7 +102,7 @@ class JanusPacket:
         return msgpack.packb(data_dict, use_bin_type=True)
     
     @classmethod
-    def deserialize(cls, payload_bytes):
+    def deserialize(cls, payload_bytes: bytes) -> "JanusPacket":
         """
         Convert binary bytes back into a Packet object.
         

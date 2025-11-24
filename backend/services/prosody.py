@@ -8,7 +8,7 @@ import aubio
 import numpy as np
 
 class ProsodyExtractor:
-    def __init__(self, sample_rate=44100, hop_size=512):
+    def __init__(self, sample_rate: int = 44100, hop_size: int = 512) -> None:
         """
         Initialize Aubio analyzers.
         
@@ -30,7 +30,7 @@ class ProsodyExtractor:
         self.pitch_detector.set_unit('Hz')
         self.pitch_detector.set_tolerance(0.8)
 
-    def analyze_buffer(self, audio_buffer) -> dict[str, str]:
+    def analyze_buffer(self, audio_buffer: np.ndarray) -> dict[str, str]:
         """
         Analyzes a full phrase buffer to extract average prosody metrics.
 

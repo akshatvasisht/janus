@@ -41,7 +41,7 @@ class Synthesizer:
         # Initialize Fish Audio SDK client (new API)
         self.client = FishAudio(api_key=api_key)
         
-        # FIX: Initialize the attribute explicitly
+        # Initialize attribute to ensure proper state before use
         self.reference_audio_bytes = None
         self._reference_audio_mtime = None
         self._reference_audio_path = None
