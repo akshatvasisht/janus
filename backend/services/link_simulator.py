@@ -6,10 +6,11 @@ Purpose: Simulates the physics of a 300bps connection.
          and sleeps for that duration, visualizing the 'upload' in the terminal.
 """
 
-import socket
-import time
-import struct
+# Standard library imports
 import os
+import socket
+import struct
+import time
 
 
 # Constants
@@ -24,14 +25,18 @@ class LinkSimulator:
     TCP mode uses length-prefixed framing to handle stream-oriented protocol.
     """
     
-    def __init__(self, target_ip="127.0.0.1", target_port=5005, use_tcp=False):
+    def __init__(self, target_ip: str = "127.0.0.1", target_port: int = 5005, use_tcp: bool = False) -> None:
         """
         Initialize the Link Simulator.
         
         Args:
-            target_ip: Target IP address (default: "127.0.0.1")
-            target_port: Target port (default: 5005)
-            use_tcp: Whether to use TCP instead of UDP (default: False)
+            target_ip: Target IP address. Default is "127.0.0.1".
+            target_port: Target port number. Default is 5005.
+            use_tcp: Whether to use TCP instead of UDP. Default is False.
+                TCP mode uses length-prefixed framing for stream-oriented protocol.
+        
+        Returns:
+            None
         """
         self.target_ip = target_ip
         self.target_port = target_port
@@ -39,9 +44,16 @@ class LinkSimulator:
         self.socket = None
         self._create_socket()
     
-    def _create_socket(self):
+    def _create_socket(self) -> None:
         """
         Initialize UDP or TCP socket based on use_tcp flag.
+        
+        Creates and connects the appropriate socket type. For TCP, attempts to
+        connect to the target address. Connection errors are logged but do not
+        raise exceptions.
+        
+        Returns:
+            None
         """
         if self.use_tcp:
             # TCP socket (SOCK_STREAM)
@@ -55,19 +67,20 @@ class LinkSimulator:
             # UDP socket (SOCK_DGRAM)
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     
-    def transmit(self, payload_bytes):
+    def transmit(self, payload_bytes: bytes) -> None:
         """
         Send data with a simulated 300bps delay.
         
-        Args:
-            payload_bytes: Binary payload (bytes) - the msgpack serialized packet
+        Calculates transmission delay based on packet size and simulates the
+        slow connection by sleeping for the calculated duration. Visualizes
+        progress in the terminal and then transmits the data via socket.
         
-        Logic:
-            1. Calculate packet size (including TCP framing if applicable)
-            2. Calculate simulation delay based on total bytes
-            3. Log transfer start
-            4. Visualize progress (blocks thread)
-            5. Send data via socket
+        Args:
+            payload_bytes: Binary payload (bytes) - the msgpack serialized packet.
+                For TCP mode, a 4-byte length prefix is automatically added.
+        
+        Returns:
+            None
         """
         # TCP Framing: Add 4-byte length prefix for TCP mode
         if self.use_tcp:
@@ -100,15 +113,20 @@ class LinkSimulator:
         except Exception as e:
             print(f"\nTransmission error: {e}")
     
-    def _visualize_progress(self, duration):
+    def _visualize_progress(self, duration: float) -> None:
         """
-        Make the delay look cool/realistic in the terminal.
-        Prints a progress bar with "#" characters.
+        Visualize transmission progress in the terminal.
+        
+        Prints a progress bar with "#" characters to provide visual feedback
+        during the simulated transmission delay.
         
         Args:
-            duration: Duration in seconds to simulate
+            duration: Duration in seconds to simulate.
+        
+        Returns:
+            None
         """
-        num_steps = 20  # Number of progress bar ticks
+        num_steps = 20
         tick_time = duration / num_steps
         
         for i in range(num_steps):
@@ -117,9 +135,15 @@ class LinkSimulator:
         
         print(" Done")
     
-    def close(self):
+    def close(self) -> None:
         """
         Cleanup socket connection.
+        
+        Closes the socket if it exists and resets it to None. Safe to call
+        multiple times.
+        
+        Returns:
+            None
         """
         if self.socket:
             self.socket.close()

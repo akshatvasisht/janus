@@ -5,9 +5,13 @@ Purpose: Defines the 'Janus Packet' structure and handles the binary serializati
          It uses MessagePack to ensure the payload is as small as possible.
 """
 
-import msgpack
+# Standard library imports
 import enum
 import time
+from typing import Optional
+
+# Third-party imports
+import msgpack
 
 
 class JanusMode(enum.IntEnum):
@@ -25,16 +29,26 @@ class JanusPacket:
     Uses compact keys to minimize payload size.
     """
     
-    def __init__(self, text, mode, prosody, override_emotion=None, timestamp=None):
+    def __init__(
+        self,
+        text: str,
+        mode: JanusMode,
+        prosody: dict[str, str],
+        override_emotion: Optional[str] = None,
+        timestamp: Optional[float] = None,
+    ) -> None:
         """
         Initialize a Janus Packet.
         
         Args:
-            text: The transcribed text content (str)
-            mode: Transmission mode (JanusMode enum)
-            prosody: Prosody metadata dictionary (dict with 'energy' and 'pitch')
-            override_emotion: Optional override emotion (str: "Auto", "Relaxed", "Panicked")
-            timestamp: Optional timestamp (float). If None, uses current time.
+            text: The transcribed text content.
+            mode: Transmission mode (JanusMode enum).
+            prosody: Prosody metadata dictionary with 'energy' and 'pitch' keys.
+            override_emotion: Optional override emotion. Defaults to "Auto".
+            timestamp: Optional timestamp. If None, uses current time.
+        
+        Returns:
+            None
         """
         self.text = text
         self.mode = mode
@@ -42,29 +56,29 @@ class JanusPacket:
         self.override_emotion = override_emotion if override_emotion is not None else "Auto"
         self.timestamp = timestamp if timestamp is not None else time.time()
     
-    def to_dict(self):
+    def to_dict(self) -> dict:
         """
         Convert class attributes into a raw dictionary for serialization.
+        
         Uses short keys to minimize payload size.
         
         Returns:
-            dict: Dictionary with compact keys ('t', 'm', 'p', 'o', 'ts')
+            dict: Dictionary with compact keys ('t', 'm', 'p', 'o', 'ts').
         """
         result = {
             't': self.text,
-            'm': int(self.mode),  # Convert enum to int for serialization
+            'm': int(self.mode),
             'p': self.prosody,
             'ts': self.timestamp
         }
         
-        # Only include override_emotion if it's not "Auto"
         if self.override_emotion != "Auto":
             result['o'] = self.override_emotion
         
         return result
     
     @classmethod
-    def from_dict(cls, data):
+    def from_dict(cls, data: dict) -> "JanusPacket":
         """
         Reconstruct the Packet object from a raw dictionary.
         
@@ -82,19 +96,20 @@ class JanusPacket:
         
         return cls(text, mode, prosody, override_emotion, timestamp)
     
-    def serialize(self):
+    def serialize(self) -> bytes:
         """
         Convert the Packet object into a compact binary byte string.
+        
         Uses MessagePack for efficient serialization.
         
         Returns:
-            bytes: Compact binary payload
+            bytes: Compact binary payload.
         """
         data_dict = self.to_dict()
         return msgpack.packb(data_dict, use_bin_type=True)
     
     @classmethod
-    def deserialize(cls, payload_bytes):
+    def deserialize(cls, payload_bytes: bytes) -> "JanusPacket":
         """
         Convert binary bytes back into a Packet object.
         

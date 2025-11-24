@@ -9,54 +9,54 @@ Purpose: The 'Brain' of the receiver. It converts the received 'JanusPacket'
          4. Sine wave generation for Morse Code (Stretch Goal).
 """
 
+# Standard library imports
+import os
+from pathlib import Path
+
+# Third-party imports
+import numpy as np
+from fishaudio import FishAudio
+from fishaudio.types import ReferenceAudio
+
+# Local imports
+from ..common.protocol import JanusMode, JanusPacket
+
 # Audio format constants
 SAMPLE_RATE = 44100  # Hz
 MORSE_FREQUENCY = 800  # Hz for Morse code beeps
 
-# Import Fish Audio SDK (new API)
-from fishaudio import FishAudio
-from fishaudio.types import ReferenceAudio
-
-# Import Numpy (for Morse Code math)
-import numpy as np
-
-# Import Enum (JanusMode)
-from ..common.protocol import JanusMode
-
-# Import os for path operations and hot-reload
-import os
-from pathlib import Path
-
 class Synthesizer:
-    def __init__(self, api_key, reference_audio_path=None):
+    def __init__(self, api_key: str, reference_audio_path: str | None = None):
         """
         Initialize the Synthesizer.
-        1. Setup Fish Audio Client with API Key.
-        2. Load the 'Reference Audio' file into memory (bytes).
-           - This is the "Voice ID" we are cloning.
-           - If no file provided, use a default system ID.
-        3. Define Morse Code Dictionary (A=.-, B=-..., etc).
+        
+        Sets up the Fish Audio SDK client with the provided API key and loads
+        reference audio for voice cloning. If no reference audio path is provided,
+        uses a default path in the backend directory. Supports hot-reload of
+        reference audio files without restarting the service.
+        
+        Args:
+            api_key: Fish Audio API key for authentication.
+            reference_audio_path: Optional path to reference audio file for
+                voice cloning. If None, uses default path 'backend/reference_audio.wav'.
+                The reference audio serves as the "Voice ID" for cloning.
+        
+        Returns:
+            None
         """
-        # Initialize Fish Audio SDK client (new API)
         self.client = FishAudio(api_key=api_key)
         
-        # FIX: Initialize the attribute explicitly
         self.reference_audio_bytes = None
         self._reference_audio_mtime = None
         self._reference_audio_path = None
         
-        # Determine reference audio path (always store target path, even if file doesn't exist yet)
-        # Prefer environment variable, otherwise use default path in backend directory
         if reference_audio_path:
             audio_path = reference_audio_path
         else:
-            # Always use default path in backend directory (even if file doesn't exist yet)
             backend_dir = Path(__file__).parent.parent
             default_path = backend_dir / "reference_audio.wav"
             audio_path = str(default_path)
         
-        # Always set the target path and try to load reference audio
-        # This allows hot-reload to work even if file doesn't exist at startup
         self._reference_audio_path = audio_path
         self._load_reference_audio(audio_path)
         
@@ -72,54 +72,62 @@ class Synthesizer:
             ' ': ' '  # Space between words
         }
     
-    def _load_reference_audio(self, audio_path):
+    def _load_reference_audio(self, audio_path: str) -> None:
         """
         Load reference audio file and store its modification time for hot-reload.
         
         Args:
-            audio_path: Path to the reference audio file
+            audio_path: Path to the reference audio file.
+        
+        Returns:
+            None
         """
         try:
             if os.path.exists(audio_path):
                 with open(audio_path, 'rb') as f:
                     self.reference_audio_bytes = f.read()
                 self._reference_audio_mtime = os.path.getmtime(audio_path)
-                # Note: _reference_audio_path is already set in __init__, don't overwrite it
             else:
-                # File doesn't exist yet, but keep the path for future hot-reload checks
                 self.reference_audio_bytes = None
                 self._reference_audio_mtime = None
-                # Keep _reference_audio_path set so hot-reload can detect when file appears
         except Exception as e:
             print(f"Warning: Could not load reference audio from {audio_path}: {e}")
             self.reference_audio_bytes = None
             self._reference_audio_mtime = None
-            # Keep _reference_audio_path set even on error for future retries
     
-    def _check_and_reload_reference_audio(self):
+    def _check_and_reload_reference_audio(self) -> None:
         """
         Check if reference audio file has changed and reload if necessary.
-        This enables hot-reload without server restart.
-        Also detects if file appears for the first time (wasn't present at startup).
+        
+        This enables hot-reload without server restart. Also detects if file
+        appears for the first time (wasn't present at startup).
+        
+        Returns:
+            None
         """
         if self._reference_audio_path:
             if os.path.exists(self._reference_audio_path):
-                # File exists - check if it's new or has been modified
                 current_mtime = os.path.getmtime(self._reference_audio_path)
                 if self._reference_audio_mtime is None or self._reference_audio_mtime != current_mtime:
-                    # File is new or has changed, reload it
                     self._load_reference_audio(self._reference_audio_path)
-            # If file doesn't exist yet, do nothing (will be checked again on next call)
 
-    def synthesize(self, packet):
+    def synthesize(self, packet: JanusPacket) -> bytes:
         """
         Main entry point. Routing logic based on Packet Mode.
         
+        Routes synthesis to the appropriate method based on packet mode:
+        - MORSE_CODE: Generates sine wave tones
+        - TEXT_ONLY: Uses fast TTS with optional emotion override
+        - SEMANTIC_VOICE: Uses generative AI with dynamic emotion prompting
+        
         Args:
-            packet (JanusPacket): The deserialized data.
+            packet: The deserialized JanusPacket containing text, mode, and metadata.
             
         Returns:
-            bytes: Raw PCM audio data ready for PyAudio.
+            bytes: Raw PCM audio data ready for PyAudio playback.
+        
+        Raises:
+            ValueError: If packet mode is unknown or unsupported.
         """
         if packet.mode == JanusMode.MORSE_CODE:
             return self._generate_morse_audio(packet.text)
@@ -130,99 +138,100 @@ class Synthesizer:
         else:
             raise ValueError(f"Unknown packet mode: {packet.mode}")
 
-    def _generate_semantic_audio(self, packet):
+    def _generate_semantic_audio(self, packet: JanusPacket) -> bytes:
         """
-        The Core Feature: Generative AI Voice.
+        Generates semantic voice audio using generative AI.
+        
+        Uses Fish Audio SDK to synthesize speech with emotion tags derived from
+        prosody analysis or manual override. Supports voice cloning via reference
+        audio when available.
+        
+        Args:
+            packet: JanusPacket containing text, prosody metadata, and optional
+                emotion override.
+        
+        Returns:
+            bytes: Raw PCM audio data (WAV format) ready for PyAudio playback.
+                Falls back to fast TTS if API call fails.
         """
-        # Check for hot-reload of reference audio
         self._check_and_reload_reference_audio()
         
-        # 1. CONSTRUCT PROMPT
-        #    Determine the "Emotion Tag" to prepend to the text.
         if packet.override_emotion and packet.override_emotion != "Auto":
-            # Logic A (Manual Override):
-            # Use parentheses format for Fish Audio tones
             prompt = f"({packet.override_emotion}) {packet.text}"
         else:
-            # Logic B (Auto/Prosody Map):
             prosody = packet.prosody or {}
             pitch = prosody.get('pitch', 'Normal')
             energy = prosody.get('energy', 'Normal')
             
-            # Map combination to emotion tags (using Fish Audio's available tones)
             if pitch == 'High' and energy == 'Loud':
-                emotion_tag = "excited"  # High pitch + loud = excited
+                emotion_tag = "excited"
             elif pitch == 'High' and energy == 'Normal':
-                emotion_tag = "joyful"  # High pitch + normal = joyful
+                emotion_tag = "joyful"
             elif pitch == 'High' and energy in ('Quiet', 'Low'):
-                emotion_tag = "whispering"  # High pitch + quiet = whispering
+                emotion_tag = "whispering"
             elif pitch == 'Low' and energy == 'Loud':
-                emotion_tag = "shouting"  # Low pitch + loud = shouting
+                emotion_tag = "shouting"
             elif pitch == 'Low' and energy == 'Low':
-                emotion_tag = "sad"  # Low pitch + low energy = sad
+                emotion_tag = "sad"
             elif pitch == 'Low' and energy == 'Normal':
-                emotion_tag = "relaxed"  # Low pitch + normal = relaxed
+                emotion_tag = "relaxed"
             elif energy == 'Loud':
-                emotion_tag = "shouting"  # Any pitch + loud = shouting
+                emotion_tag = "shouting"
             elif energy in ('Quiet', 'Low'):
-                emotion_tag = "whispering"  # Any pitch + quiet = whispering
+                emotion_tag = "whispering"
             else:
-                emotion_tag = "relaxed"  # Default to relaxed
+                emotion_tag = "relaxed"
             
             prompt = f"({emotion_tag}) {packet.text}"
 
-        # 2. CALL FISH AUDIO API
         try:
-            # Create references list if we have reference audio bytes (cloned voice)
             references = None
             reference_id = None
             
             if self.reference_audio_bytes:
-                # Use cloned voice with references parameter
                 references = [ReferenceAudio(
                     audio=self.reference_audio_bytes,
-                    text=""  # Reference transcript not available, using empty string
+                    text=""
                 )]
             else:
-                # Fall back to generic voice with default reference_id
                 reference_id = "5196af35f6ff4a0dbf541793fc9f2157"
             
-            # Call API directly (new API - no TTSRequest object needed)
-            # Note: "pcm" format may not be supported, using "wav" which contains PCM data
             print(prompt)
             
-            # Build API call parameters
             api_params = {
                 "text": prompt,
-                "format": "wav",  # Changed from "pcm" - wav contains PCM data
+                "format": "wav",
                 "latency": "balanced"
             }
             
-            # Use references if available, otherwise use reference_id
             if references:
                 api_params["references"] = references
             else:
                 api_params["reference_id"] = reference_id
             
             audio_bytes = self.client.tts.convert(**api_params)
-            
-            # New API returns complete audio bytes directly (not an iterator)
             return audio_bytes
             
         except Exception as e:
-            # Fallback to fast TTS on API error
             print(f"Synthesis error: {e}")
             return self._generate_fast_tts(packet.text, packet.override_emotion)
 
-    def _generate_fast_tts(self, text, emotion=None):
+    def _generate_fast_tts(self, text: str, emotion: str | None = None) -> bytes:
         """
-        Fallback mode. Saves API credits/latency.
-        Could use a cheaper Fish Audio model or a local system TTS.
-        Uses cloned voice if available, otherwise falls back to generic voice.
+        Fallback TTS mode for reduced API cost and latency.
+        
+        Uses Fish Audio SDK with balanced latency settings. Supports cloned voice
+        if reference audio is available, otherwise falls back to generic voice.
+        Can be used as a fallback when semantic voice synthesis fails.
         
         Args:
-            text: Text to synthesize
-            emotion: Optional emotion override (e.g., "joyful", "panicked")
+            text: Text string to synthesize.
+            emotion: Optional emotion override tag (e.g., "joyful", "panicked").
+                If None or "Auto", emotion tag is omitted from the prompt.
+        
+        Returns:
+            bytes: Raw PCM audio data (WAV format) ready for PyAudio playback.
+                Returns empty bytes if synthesis fails.
         """
         # Check for hot-reload of reference audio
         self._check_and_reload_reference_audio()
@@ -237,43 +246,40 @@ class Synthesizer:
             # Build API call parameters
             api_params = {
                 "text": prompt,
-                "format": "wav",  # Changed from "pcm" - wav contains PCM data
+                "format": "wav",
                 "latency": "balanced"
             }
             
-            # Use cloned voice if available, otherwise use generic voice
             if self.reference_audio_bytes:
-                # Use cloned voice with references parameter
                 api_params["references"] = [ReferenceAudio(
                     audio=self.reference_audio_bytes,
-                    text=""  # Reference transcript not available, using empty string
+                    text=""
                 )]
             else:
-                # Fall back to generic voice (no reference)
                 api_params["references"] = None
             
-            # Call API directly (new API - no TTSRequest object needed)
             audio_bytes = self.client.tts.convert(**api_params)
-            
-            # New API returns complete audio bytes directly (not an iterator)
             return audio_bytes
         except Exception as e:
             # Return empty audio bytes on error
             print(f"Fast TTS error: {e}")
             return b''
 
-    def _generate_morse_audio(self, text):
+    def _generate_morse_audio(self, text: str) -> bytes:
         """
-        Stretch Goal: Turn text into sine waves.
+        Generates Morse code audio from text using sine wave tones.
         
-        Logic:
-        1. Iterate chars in text.
-        2. Look up Morse pattern (e.g., ".-").
-        3. For '.': Generate 0.1s sine wave (800Hz).
-        4. For '-': Generate 0.3s sine wave (800Hz).
-        5. Add silence between beeps.
-        6. Concatenate all numpy arrays.
-        7. Convert to bytes and return.
+        Converts text characters to Morse code patterns and generates corresponding
+        audio tones. Dots (.) produce 0.1s tones, dashes (-) produce 0.3s tones,
+        both at 800Hz. Appropriate silence is inserted between symbols, letters,
+        and words.
+        
+        Args:
+            text: Text string to convert to Morse code audio.
+        
+        Returns:
+            bytes: Raw PCM audio data (int16 format) ready for PyAudio playback.
+                Returns empty bytes if text is empty or contains no valid characters.
         """
         audio_segments = []
         
