@@ -1,10 +1,18 @@
 import pytest
 import time
+from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 from backend.server import app
 from backend.common import engine_state
 
 client = TestClient(app)
+
+@pytest.fixture(autouse=True)
+def mock_hardware():
+    """Mock AudioService to prevent hardware initialization errors during tests"""
+    with patch('backend.server.AudioService') as mock_audio_service:
+        mock_audio_service.return_value = MagicMock()
+        yield mock_audio_service
 
 @pytest.fixture(autouse=True)
 def setup_engine_state():

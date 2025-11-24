@@ -9,11 +9,11 @@ import sys
 import os
 import numpy as np
 
-# Add backend to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+# Add project root to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
-from services.synthesizer import Synthesizer
-from common.protocol import JanusPacket, JanusMode
+from backend.services.synthesizer import Synthesizer
+from backend.common.protocol import JanusPacket, JanusMode
 
 # Import SDK classes for type hints/readability (not used for patching)
 from fishaudio import FishAudio
@@ -27,12 +27,12 @@ SAMPLE_RATE = 44100  # Hz
 # Synthesizer Initialization Tests
 # ============================================================================
 
-@patch('services.synthesizer.FishAudio')
+@patch('backend.services.synthesizer.FishAudio')
 class TestSynthesizerInit:
     """Tests for Synthesizer initialization."""
     
-    @patch('services.synthesizer.os.path.exists')
-    @patch('services.synthesizer.os.path.getmtime')
+    @patch('backend.services.synthesizer.os.path.exists')
+    @patch('backend.services.synthesizer.os.path.getmtime')
     def test_init_loads_reference(self, mock_mtime, mock_exists, mock_client_class):
         """Verify reference audio file is read as bytes when path provided."""
         mock_client = MagicMock()
@@ -78,7 +78,7 @@ class TestSynthesizerInit:
 class TestSynthesizerRouting:
     """Tests for synthesize() routing logic."""
     
-    @patch('services.synthesizer.FishAudio')
+    @patch('backend.services.synthesizer.FishAudio')
     @patch.object(Synthesizer, '_generate_semantic_audio')
     def test_routing_semantic(self, mock_method, mock_client_class):
         """Verify synthesize() routes JanusMode.SEMANTIC_VOICE to _generate_semantic_audio."""
@@ -103,7 +103,7 @@ class TestSynthesizerRouting:
         mock_method.assert_called_once_with(packet)
         assert result == mock_audio_bytes
     
-    @patch('services.synthesizer.FishAudio')
+    @patch('backend.services.synthesizer.FishAudio')
     @patch.object(Synthesizer, '_generate_fast_tts')
     def test_routing_text_only(self, mock_method, mock_client_class):
         """Verify JanusMode.TEXT_ONLY routes to _generate_fast_tts."""
@@ -128,7 +128,7 @@ class TestSynthesizerRouting:
         mock_method.assert_called_once_with("Hello", "Auto")
         assert result == mock_audio_bytes
     
-    @patch('services.synthesizer.FishAudio')
+    @patch('backend.services.synthesizer.FishAudio')
     @patch.object(Synthesizer, '_generate_morse_audio')
     def test_routing_morse_code(self, mock_method, mock_client_class):
         """Verify JanusMode.MORSE_CODE routes to _generate_morse_audio."""
@@ -161,7 +161,7 @@ class TestSynthesizerRouting:
 class TestPromptConstruction:
     """Tests for emotion prompt construction."""
     
-    @patch('services.synthesizer.FishAudio')
+    @patch('backend.services.synthesizer.FishAudio')
     def test_prompt_construction_override(self, mock_client_class):
         """Verify override_emotion creates prompt with parentheses format."""
         mock_client = MagicMock()
@@ -191,7 +191,7 @@ class TestPromptConstruction:
         assert call_args.kwargs['text'].startswith('(excited)')
         assert 'Hello world' in call_args.kwargs['text']
     
-    @patch('services.synthesizer.FishAudio')
+    @patch('backend.services.synthesizer.FishAudio')
     def test_prompt_construction_prosody_mapping(self, mock_client_class):
         """Verify prosody mapping creates correct emotion tags."""
         mock_client = MagicMock()
@@ -235,7 +235,7 @@ class TestPromptConstruction:
 class TestMorseCodeGeneration:
     """Tests for Morse code audio generation."""
     
-    @patch('services.synthesizer.FishAudio')
+    @patch('backend.services.synthesizer.FishAudio')
     def test_morse_code_generation(self, mock_client_class):
         """Verify JanusMode.MORSE_CODE returns bytes and 'SOS' generates correct duration."""
         mock_client = MagicMock()
@@ -285,7 +285,7 @@ class TestMorseCodeGeneration:
 class TestAPIFailureFallback:
     """Tests for API failure fallback logic."""
     
-    @patch('services.synthesizer.FishAudio')
+    @patch('backend.services.synthesizer.FishAudio')
     @patch.object(Synthesizer, '_generate_fast_tts')
     def test_api_failure_fallback(self, mock_fallback_method, mock_client_class):
         """Verify fallback to _generate_fast_tts when Fish Audio API raises exception."""

@@ -8,6 +8,9 @@ Purpose: Handles the raw interface with the microphone and speakers using PyAudi
 import pyaudio
 import numpy as np
 import warnings
+import logging
+
+logger = logging.getLogger(__name__)
 
 class AudioService:
     def __init__(self):
@@ -27,11 +30,23 @@ class AudioService:
         # Safety flag for hardware availability
         self._pyaudio_available = False
         
+        # Initialize to None to ensure cleanup works even if init fails partially
+        self.pyaudio_instance = None
+        self.input_stream = None
+        self.output_stream = None
+        
         try:
             # Initialize PyAudio
             self.pyaudio_instance = pyaudio.PyAudio()
-            
-            # Open input stream (microphone)
+            logger.info("PyAudio instance initialized successfully.")
+        except Exception as e:
+            warnings.warn(f"Failed to initialize PyAudio: {e}. Running in Silent/Mock mode.")
+            logger.error(f"PyAudio initialization error: {e}")
+            self.pyaudio_instance = None
+            return
+        
+        # Try to open input stream (microphone)
+        try:
             self.input_stream = self.pyaudio_instance.open(
                 format=self.FORMAT,
                 channels=self.CHANNELS,
@@ -39,8 +54,21 @@ class AudioService:
                 input=True,
                 frames_per_buffer=self.CHUNK_SIZE
             )
-            
-            # Open output stream (speakers)
+            logger.info("Audio input stream opened successfully.")
+        except Exception as e:
+            warnings.warn(f"Failed to open audio input stream: {e}. Input will be disabled.")
+            logger.error(f"Audio input stream error: {e}")
+            # Ensure stream is None if opening failed
+            if self.input_stream is not None:
+                try:
+                    self.input_stream.stop_stream()
+                    self.input_stream.close()
+                except Exception:
+                    pass
+                self.input_stream = None
+        
+        # Try to open output stream (speakers)
+        try:
             self.output_stream = self.pyaudio_instance.open(
                 format=self.FORMAT,
                 channels=self.CHANNELS,
@@ -48,16 +76,25 @@ class AudioService:
                 output=True,
                 frames_per_buffer=self.CHUNK_SIZE
             )
-            
-            self._pyaudio_available = True
-            print("✅ AudioService initialized successfully.")
-            
+            logger.info("Audio output stream opened successfully.")
         except Exception as e:
-            # Catch the ALSA/Invalid Device error
-            warnings.warn(f"Audio Initialization Failed: {e}. Running in Silent/Mock mode.")
-            self.pyaudio_instance = None
-            self.input_stream = None
-            self.output_stream = None
+            warnings.warn(f"Failed to open audio output stream: {e}. Output will be disabled.")
+            logger.error(f"Audio output stream error: {e}")
+            # Ensure stream is None if opening failed
+            if self.output_stream is not None:
+                try:
+                    self.output_stream.stop_stream()
+                    self.output_stream.close()
+                except Exception:
+                    pass
+                self.output_stream = None
+        
+        # Set availability flag only if at least one stream is available
+        if self.input_stream is not None or self.output_stream is not None:
+            self._pyaudio_available = True
+            logger.info("✅ AudioService initialized successfully.")
+        else:
+            logger.warning("AudioService initialized but no streams available. Running in Silent/Mock mode.")
 
     def read_chunk(self):
         """
@@ -70,8 +107,8 @@ class AudioService:
            - This format is required by Silero VAD and Whisper.
         4. Return the numpy array.
         """
-        if not self._pyaudio_available:
-            # Return silent data if initialization failed
+        if not self._pyaudio_available or self.input_stream is None:
+            # Return silent data if initialization failed or input stream failed to initialize
             return np.zeros(self.CHUNK_SIZE, dtype=np.float32)
         
         try:
@@ -98,8 +135,8 @@ class AudioService:
         1. Receive audio data (likely bytes or numpy array).
         2. Write data to the output stream.
         """
-        if not self._pyaudio_available:
-            # Skip writing if no hardware is available
+        if not self._pyaudio_available or self.output_stream is None:
+            # Skip writing if no hardware is available or output stream failed to initialize
             return
         
         # Convert numpy array to int16 if needed
