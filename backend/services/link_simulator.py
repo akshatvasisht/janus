@@ -1,16 +1,18 @@
 """
-Module: Link Simulator (The 'Application-Layer Throttle')
-Purpose: Simulates the physics of a 300bps connection.
-         Instead of throttling the actual network card (which breaks API calls),
-         this module calculates how long a packet *would* take to travel at 300bps
-         and sleeps for that duration, visualizing the 'upload' in the terminal.
+Module: Link Simulator
+Purpose: Simulates a constrained 300bps network connection for demonstration purposes.
+         Calculates transmission delay based on packet size and simulates the delay
+         by sleeping for the calculated duration. Uses application-layer throttling
+         to avoid interfering with other network operations.
 """
 
-# Standard library imports
+import logging
 import os
 import socket
 import struct
 import time
+
+logger = logging.getLogger(__name__)
 
 
 # Constants
@@ -62,7 +64,7 @@ class LinkSimulator:
             try:
                 self.socket.connect((self.target_ip, self.target_port))
             except ConnectionRefusedError:
-                print(f"Warning: Could not connect to {self.target_ip}:{self.target_port}")
+                logger.warning(f"Could not connect to {self.target_ip}:{self.target_port}")
         else:
             # UDP socket (SOCK_DGRAM)
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -93,13 +95,13 @@ class LinkSimulator:
             framed_payload = payload_bytes
             total_bytes = len(payload_bytes)
         
-        # Calculate simulation delay
+        # Calculate simulation delay based on 300bps constraint
         delay = total_bytes / BYTES_PER_SECOND
         
         # Log transfer start
         print(f"Transmitting {total_bytes} bytes @ {BAUD_RATE}bps...", end=" ", flush=True)
         
-        # Execute delay (the "fake" throttle) with visualization
+        # Simulate transmission delay with visualization
         self._visualize_progress(delay)
         
         # Actual transmission
@@ -111,7 +113,7 @@ class LinkSimulator:
                 # UDP: sendto (fire-and-forget)
                 self.socket.sendto(framed_payload, (self.target_ip, self.target_port))
         except Exception as e:
-            print(f"\nTransmission error: {e}")
+            logger.error(f"Transmission error: {e}")
     
     def _visualize_progress(self, duration: float) -> None:
         """

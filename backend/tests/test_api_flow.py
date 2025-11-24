@@ -1,12 +1,9 @@
-# Standard library imports
 import time
 from unittest.mock import MagicMock, patch
 
-# Third-party imports
 import pytest
 from fastapi.testclient import TestClient
 
-# Local imports
 from backend.common import engine_state
 from backend.server import app
 

@@ -1,23 +1,24 @@
 """
-Module: Main Receiver Logic (The 'Mouthpiece' Controller)
-Purpose: Orchestrates the listening loop, decryption, synthesis, and playback.
-         It acts as the "Server" in the demo, waiting for packets from the "Sender".
+Module: Main Receiver Logic
+Purpose: Orchestrates the listening loop, packet deserialization, synthesis, and playback.
+         Listens for incoming JanusPackets, synthesizes audio, and plays it through the audio service.
 """
 
-# Standard library imports
+import logging
 import os
 import queue
 import socket
 import struct
 import threading
 
-# Third-party imports
 from dotenv import load_dotenv
 
-# Local imports
 from backend.common.protocol import JanusMode, JanusPacket
 from backend.services.audio_io import AudioService
 from backend.services.synthesizer import Synthesizer
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def recv_exact(sock: socket.socket, n: int) -> bytes | None:
@@ -75,7 +76,7 @@ def playback_worker(
             playback_queue.task_done()
             
         except Exception as e:
-            print(f"Playback error: {e}")
+            logger.error(f"Playback error: {e}")
             playback_queue.task_done()
 
 
@@ -112,13 +113,13 @@ def receiver_loop() -> None:
         listen_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         listen_sock.bind(('0.0.0.0', receiver_port))
         listen_sock.listen(1)
-        print(f"Listening for Transmissions on TCP port {receiver_port}...")
+        logger.info(f"Listening for Transmissions on TCP port {receiver_port}...")
         sock, addr = listen_sock.accept()
-        print(f"Connection established from {addr}")
+        logger.info(f"Connection established from {addr}")
     else:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind(('0.0.0.0', receiver_port))
-        print(f"Listening for Transmissions on UDP port {receiver_port}...")
+        logger.info(f"Listening for Transmissions on UDP port {receiver_port}...")
     
     playback_queue = queue.Queue(maxsize=100)
     stop_event = threading.Event()
@@ -136,13 +137,13 @@ def receiver_loop() -> None:
                 if use_tcp:
                     length_bytes = recv_exact(sock, 4)
                     if length_bytes is None:
-                        print("Connection closed by sender")
+                        logger.info("Connection closed by sender")
                         break
                     
                     payload_length = struct.unpack('>I', length_bytes)[0]
                     data = recv_exact(sock, payload_length)
                     if data is None:
-                        print("Connection closed while reading packet")
+                        logger.info("Connection closed while reading packet")
                         break
                 else:
                     data, addr = sock.recvfrom(4096)
@@ -150,7 +151,7 @@ def receiver_loop() -> None:
                 try:
                     packet = JanusPacket.deserialize(data)
                 except Exception as e:
-                    print(f"Corrupt packet received: {e}")
+                    logger.error(f"Corrupt packet received: {e}")
                     continue
 
                 if packet.override_emotion != "Auto":
@@ -178,29 +179,29 @@ def receiver_loop() -> None:
                 }
                 mode_name = mode_names.get(packet.mode, "Unknown")
                 
-                print(f"[RECEIVED] [{mode_name}] '{packet.text}'")
-                print(f"   Meta: Energy={packet.prosody.get('energy', 'N/A')}, "
+                logger.info(f"[RECEIVED] [{mode_name}] '{packet.text}'")
+                logger.debug(f"   Meta: Energy={packet.prosody.get('energy', 'N/A')}, "
                       f"Pitch={packet.prosody.get('pitch', 'N/A')} -> Prompt: [{emotion_tag}]")
 
                 try:
                     audio_bytes = synthesizer.synthesize(packet)
                 except Exception as e:
-                    print(f"Synthesis error: {e}")
+                    logger.error(f"Synthesis error: {e}")
                     continue
 
                 try:
                     playback_queue.put(audio_bytes, timeout=0.1)
                 except queue.Full:
-                    print("Warning: Playback queue full, skipping audio chunk")
+                    logger.warning("Playback queue full, skipping audio chunk")
 
             except KeyboardInterrupt:
                 break
             except Exception as e:
-                print(f"Receiver Error: {e}")
+                logger.error(f"Receiver Error: {e}")
                 continue
     
     finally:
-        print("\nShutting down...")
+        logger.info("Shutting down...")
         stop_event.set()
         playback_thread.join(timeout=2)
         
@@ -211,7 +212,7 @@ def receiver_loop() -> None:
         
         audio_service.close()
         
-        print("Shutdown complete.")
+        logger.info("Shutdown complete.")
 
 
 if __name__ == "__main__":

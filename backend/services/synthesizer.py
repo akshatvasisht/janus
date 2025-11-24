@@ -1,25 +1,24 @@
 """
 Module: Synthesizer Service
-Purpose: The 'Brain' of the receiver. It converts the received 'JanusPacket' 
-         (Text + Metadata) into actual Audio Bytes.
-         It handles:
-         1. Generative AI (Fish Audio) for Semantic Voice.
-         2. Logic for 'Dynamic Prompting' (Mapping Pitch/Energy -> Emotion Tags).
-         3. Fallback generation for Text-Only mode.
-         4. Sine wave generation for Morse Code (Stretch Goal).
+Purpose: Converts received JanusPackets (text and metadata) into audio bytes.
+         Handles multiple synthesis modes:
+         1. Generative AI (Fish Audio) for semantic voice reconstruction.
+         2. Dynamic emotion prompting based on pitch/energy analysis.
+         3. Fast TTS fallback for text-only mode.
+         4. Sine wave generation for Morse code mode.
 """
 
-# Standard library imports
+import logging
 import os
 from pathlib import Path
 
-# Third-party imports
 import numpy as np
 from fishaudio import FishAudio
 from fishaudio.types import ReferenceAudio
 
-# Local imports
 from ..common.protocol import JanusMode, JanusPacket
+
+logger = logging.getLogger(__name__)
 
 # Audio format constants
 SAMPLE_RATE = 44100  # Hz
@@ -91,7 +90,7 @@ class Synthesizer:
                 self.reference_audio_bytes = None
                 self._reference_audio_mtime = None
         except Exception as e:
-            print(f"Warning: Could not load reference audio from {audio_path}: {e}")
+            logger.warning(f"Could not load reference audio from {audio_path}: {e}")
             self.reference_audio_bytes = None
             self._reference_audio_mtime = None
     
@@ -196,8 +195,6 @@ class Synthesizer:
             else:
                 reference_id = "5196af35f6ff4a0dbf541793fc9f2157"
             
-            print(prompt)
-            
             api_params = {
                 "text": prompt,
                 "format": "wav",
@@ -213,7 +210,7 @@ class Synthesizer:
             return audio_bytes
             
         except Exception as e:
-            print(f"Synthesis error: {e}")
+            logger.error(f"Synthesis error: {e}")
             return self._generate_fast_tts(packet.text, packet.override_emotion)
 
     def _generate_fast_tts(self, text: str, emotion: str | None = None) -> bytes:
@@ -261,8 +258,7 @@ class Synthesizer:
             audio_bytes = self.client.tts.convert(**api_params)
             return audio_bytes
         except Exception as e:
-            # Return empty audio bytes on error
-            print(f"Fast TTS error: {e}")
+            logger.error(f"Fast TTS error: {e}")
             return b''
 
     def _generate_morse_audio(self, text: str) -> bytes:

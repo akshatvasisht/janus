@@ -3,7 +3,6 @@ Manual Integration Tool for Testing Receiver
 Sends test packets to the running receiver for manual testing.
 """
 
-# Standard library imports
 import os
 import socket
 import struct
@@ -11,7 +10,6 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-# Local imports
 from common.protocol import JanusMode, JanusPacket
 
 
