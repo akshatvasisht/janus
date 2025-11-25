@@ -91,7 +91,7 @@ Transmission modes for Janus packets:
 
 - `"semantic"`: Full semantic transmission (text + prosody data)
 - `"text_only"`: Text-only transmission (no prosody)
-- `"morse"`: Morse code transmission (planned)
+- `"morse"`: Morse code transmission
 
 #### EmotionOverride
 

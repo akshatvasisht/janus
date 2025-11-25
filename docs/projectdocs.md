@@ -42,66 +42,64 @@ This document provides detailed architectural documentation, design decisions, a
 
 ```
 MadHacks/
-├── backend/                    # Python 3.10+ (FastAPI)
+├── backend/                        # Python 3.10+ (FastAPI)
 │   ├── api/
-│   │   ├── endpoints.py       # REST endpoints (/api/health, /api/voice/verify)
-│   │   ├── socket_manager.py  # WebSocket handler (ws://localhost:8000/ws/janus)
-│   │   └── types.py           # Pydantic models for WebSocket messages
+│   │   ├── endpoints.py            # REST endpoints (/api/health, /api/voice/verify)
+│   │   ├── socket_manager.py       # WebSocket handler (ws://localhost:8000/ws/janus)
+│   │   └── types.py                # Pydantic models for WebSocket messages
 │   ├── common/
-│   │   ├── engine_state.py    # Shared control state and event queues
-│   │   └── protocol.py        # JanusPacket definition and MessagePack serialization
+│   │   ├── engine_state.py         # Shared control state and event queues
+│   │   └── protocol.py             # JanusPacket definition and MessagePack serialization
 │   ├── services/
-│   │   ├── audio_io.py         # Microphone capture & speaker output (PyAudio)
-│   │   ├── engine.py           # Smart Ear engine loop and receiver loop
-│   │   ├── vad.py              # Silero-VAD logic
-│   │   ├── transcriber.py      # Faster-Whisper (Int8 quantized)
-│   │   ├── prosody.py          # Aubio (Pitch/Energy extraction)
-│   │   ├── synthesizer.py      # Fish Audio SDK integration
-│   │   └── link_simulator.py   # Network throttling (300bps simulation)
-│   ├── scripts/                # CLI utility scripts
-│   │   ├── sender_main.py      # CLI tool for direct network testing (standalone)
-│   │   └── receiver_main.py    # CLI tool for direct network testing (standalone)
-│   ├── tests/                  # Test suite
+│   │   ├── audio_io.py             # Microphone capture & speaker output (PyAudio)
+│   │   ├── engine.py               # Smart Ear engine loop and receiver loop
+│   │   ├── vad.py                  # Silero-VAD logic
+│   │   ├── transcriber.py          # Faster-Whisper (Int8 quantized)
+│   │   ├── prosody.py              # Aubio (Pitch/Energy extraction)
+│   │   ├── synthesizer.py          # Fish Audio SDK integration
+│   │   └── link_simulator.py       # Network throttling (300bps simulation)
+│   ├── scripts/                    # CLI utility scripts
+│   │   ├── sender_main.py          # CLI tool for direct network testing (standalone)
+│   │   └── receiver_main.py        # CLI tool for direct network testing (standalone)
+│   ├── tests/                      # Test suite
 │   │   ├── test_api_flow.py
 │   │   ├── test_engine.py
 │   │   ├── test_input_processing.py
 │   │   ├── test_synthesis.py
 │   │   ├── test_transport_layer.py
 │   │   ├── test_voice_cloning.py
-│   │   ├── hardware_check.py   # Manual hardware verification
-│   │   └── manual_sender.py    # Manual packet sender tool
-│   ├── server.py               # Unified backend entry point (FastAPI app)
-│   ├── setup.sh                # Automated setup script
-│   └── requirements.txt        # Python dependencies
+│   │   ├── hardware_check.py       # Manual hardware verification
+│   │   └── manual_sender.py        # Manual packet sender tool
+│   ├── server.py                   # Unified backend entry point (FastAPI app)
+│   ├── setup.sh                    # Automated setup script
+│   └── requirements.txt            # Python dependencies
 │
-├── frontend/                   # Next.js 14 (React)
+├── frontend/                       # Next.js 14 (React)
 │   ├── app/
-│   │   ├── page.tsx            # Main user interface (PTT controls)
-│   │   ├── layout.tsx          # Root layout
-│   │   └── globals.css         # Global styles
+│   │   ├── page.tsx                # Main user interface (PTT controls)
+│   │   ├── layout.tsx              # Root layout
+│   │   └── globals.css             # Global styles
 │   ├── components/
-│   │   ├── PushToTalk.tsx      # Main interaction button (hold-to-record)
-│   │   ├── ModeToggle.tsx      # Transmission mode selector
-│   │   ├── EmotionSelector.tsx # Emotion override selector
-│   │   ├── ControlPanel.tsx    # Control panel container
-│   │   ├── ConversationPanel.tsx # Transcript display
-│   │   ├── HeaderBar.tsx       # Status header
-│   │   ├── QuickStats.tsx       # Packet statistics display
-│   │   └── VoiceCloner.tsx     # Voice reference upload interface
+│   │   ├── PushToTalk.tsx          # Main interaction button (hold-to-record)
+│   │   ├── ModeToggle.tsx          # Transmission mode selector
+│   │   ├── EmotionSelector.tsx     # Emotion override selector
+│   │   ├── ControlPanel.tsx        # Control panel container
+│   │   ├── ConversationPanel.tsx   # Transcript display
+│   │   ├── HeaderBar.tsx           # Status header
+│   │   ├── QuickStats.tsx          # Packet statistics display
+│   │   └── VoiceCloner.tsx         # Voice reference upload interface
 │   ├── hooks/
-│   │   ├── useJanusSocket.ts   # Main socket hook (mode conversion)
-│   │   └── useJanusWebSocket.ts # WebSocket connection management
+│   │   ├── useJanusSocket.ts       # Main socket hook (mode conversion)
+│   │   └── useJanusWebSocket.ts    # WebSocket connection management
 │   └── types/
-│       └── janus.ts            # TypeScript type definitions
+│       └── janus.ts                # TypeScript type definitions
 │
-├── docs/                       # Documentation
-│   ├── API.md                  # API documentation
-│   ├── TESTING.md              # Testing guidelines
-│   ├── projectdocs.md          # This file
-│   └── STYLE.md                # Coding standards
-├── README.md                   # Project overview
-├── SETUP.md                    # Setup instructions
-└── .gitignore                  # Git ignore patterns
+├── README.md                       # Project overview
+├── SETUP.md                        # Setup instructions
+├── API.md                          # API documentation
+├── TESTING.md                      # Testing guidelines
+├── STYLE.md                        # Coding standards
+└── projectdocs.md                  # This file
 ```
 
 **Note:** The `/telemetry` page is planned for future implementation to provide real-time bandwidth visualization and packet logging.
@@ -225,9 +223,9 @@ Janus supports three transmission modes (defined in `JanusMode` enum):
    - Suitable for bandwidth-constrained scenarios
 
 3. **MORSE_CODE (Mode 2)**: Morse code transmission
-   - Planned feature for emergency communication
-   - Converts text to Morse code beeps
-   - Bypasses TTS synthesis entirely
+   - Converts text to Morse code patterns and generates sine wave audio locally
+   - Uses 800 Hz frequency for tone generation
+   - Bypasses TTS synthesis entirely (no API calls required)
 
 ---
 

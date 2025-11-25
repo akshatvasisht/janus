@@ -69,7 +69,7 @@ The Janus interface provides two interaction modes:
 Users can select transmission modes:
 - **Semantic Voice**: Transmits text + prosody data for full voice reconstruction
 - **Text Only**: Transmits only text, using default receiver voice (bandwidth optimized)
-- **Morse Code**: Planned feature for emergency communication
+- **Morse Code**: Emergency communication using audio tone generation (800 Hz)
 
 ## Key Technologies
 
