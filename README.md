@@ -4,6 +4,8 @@ Janus is a real-time semantic audio codec system designed to optimize bandwidth 
 
 This approach enables high-quality voice communication over extremely constrained network connections (as low as 300bps), then reconstructed into natural-sounding speech using modern generative TTS models.
 
+Submission for MadHacks 2025
+
 ## Quick Start
 
 1. **Setup**: Follow the instructions in [SETUP.md](SETUP.md) to install dependencies and configure the environment
@@ -43,4 +45,4 @@ MadHacks/
 
 ## License
 
-See LICENSE file for details.
+See **[LICENSE](LICENSE)** file for details.
