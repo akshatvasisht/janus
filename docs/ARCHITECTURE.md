@@ -280,6 +280,15 @@ Janus supports three transmission modes (defined in `JanusMode` enum):
 
 ## Design Decisions
 
+### Latency/Bitrate Trade-off
+
+The 300 bps target bitrate requires semantic compression (~136 bps payload) instead of acoustic waveform reconstruction, resulting in a walkie-talkie interaction model with 2.8-3.0 second turnaround latency:
+
+- Latency is driven by the need to buffer complete phrases for generative AI (Whisper ASR, Fish Audio TTS).
+- Processing starts after 16 consecutive silence chunks (~500ms) to ensure semantic completeness.
+- Faster-Whisper uses greedy decoding (beam_size=1) to reduce compute time with minimal accuracy loss.
+- Bandwidth efficiency is prioritized over low latency for scenarios where traditional codecs are unsuitable.
+
 ### Unified Backend vs. Separate Sender/Receiver
 
 The unified backend architecture (`server.py`) was chosen to:
