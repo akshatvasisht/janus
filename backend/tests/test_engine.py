@@ -1,14 +1,11 @@
+import queue
+import socket
+import threading
+from unittest.mock import MagicMock, call, patch
+
 import pytest
 
-from unittest.mock import MagicMock, patch, call
-
-import queue
-
-import threading
-
-import socket
-
-from backend.services.engine import recv_exact, playback_worker, receiver_loop
+from backend.services.engine import playback_worker, recv_exact, receiver_loop
 
 
 def test_recv_exact_success():

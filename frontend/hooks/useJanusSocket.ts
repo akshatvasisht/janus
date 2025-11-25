@@ -56,6 +56,16 @@ export type JanusSocketState = {
   ) => void;
 };
 
+/**
+ * Main hook for Janus socket state management and control.
+ * 
+ * Provides a unified interface for managing WebSocket connection state, transcripts,
+ * packet summaries, and control messages. Handles conversion between string-based
+ * JanusMode types and numeric mode values for UI compatibility.
+ * 
+ * @returns JanusSocketState object containing connection status, transcripts,
+ *   packet summaries, and control functions.
+ */
 export function useJanusSocket(): JanusSocketState {
   const [mode, setMode] = useState<0 | 1 | 2>(0);
   const [emotionOverride, setEmotionOverride] =

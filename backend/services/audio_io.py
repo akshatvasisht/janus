@@ -5,10 +5,12 @@ Purpose: Handles the raw interface with the microphone and speakers using PyAudi
          which are required for AI processing.
 """
 
-import pyaudio
-import numpy as np
-import warnings
 import logging
+import warnings
+from typing import Union
+
+import numpy as np
+import pyaudio
 
 logger = logging.getLogger(__name__)
 
@@ -16,10 +18,10 @@ class AudioService:
     def __init__(self):
         """
         Initialize the Audio Service.
-        1. Setup PyAudio instance.
-        2. Define constants for Sample Rate (e.g., 44100Hz), Chunk Size (e.g., 512), and Channels (Mono).
-        3. Open a specific input stream for the Microphone.
-        4. Open a specific output stream for the Speakers (for later playback).
+        
+        Sets up PyAudio instance and opens input/output streams for microphone capture
+        and speaker playback. Configures audio parameters (44100Hz sample rate, 512 sample
+        chunk size, mono channel) required for AI processing pipelines.
         """
         # Audio configuration constants
         self.SAMPLE_RATE = 44100
@@ -89,78 +91,80 @@ class AudioService:
                     pass
                 self.output_stream = None
         
-        # Set availability flag only if at least one stream is available
         if self.input_stream is not None or self.output_stream is not None:
             self._pyaudio_available = True
-            logger.info("✅ AudioService initialized successfully.")
+            logger.info("AudioService initialized successfully.")
         else:
             logger.warning("AudioService initialized but no streams available. Running in Silent/Mock mode.")
 
-    def read_chunk(self):
+    def read_chunk(self) -> np.ndarray:
         """
         Reads a single chunk of audio from the microphone stream.
         
-        Steps:
-        1. Read 'Chunk Size' bytes from the input stream.
-        2. Handle any potential overflow errors (if computer is slow).
-        3. Convert raw bytes into a Float32 NumPy array (normalized between -1.0 and 1.0).
-           - This format is required by Silero VAD and Whisper.
-        4. Return the numpy array.
+        Returns:
+            np.ndarray: A float32 array of audio samples normalized between -1.0 and 1.0.
+                Returns a zero-filled array if hardware is unavailable or on overflow.
+                This format is required by Silero VAD and Whisper processing pipelines.
+        
+        Raises:
+            IOError: If the input stream overflows (handled internally by logging
+                and returning zero-filled data).
         """
         if not self._pyaudio_available or self.input_stream is None:
-            # Return silent data if initialization failed or input stream failed to initialize
             return np.zeros(self.CHUNK_SIZE, dtype=np.float32)
         
         try:
-            # Read raw bytes from input stream
             raw_data = self.input_stream.read(self.CHUNK_SIZE, exception_on_overflow=False)
         except IOError as e:
-            # Handle overflow gracefully - log and return zeros
-            print(f"Audio input overflow: {e}")
-            raw_data = b'\x00' * (self.CHUNK_SIZE * 2)  # 2 bytes per sample (int16)
+            logger.warning(f"Audio input overflow: {e}")
+            raw_data = b'\x00' * (self.CHUNK_SIZE * 2)
         
-        # Convert bytes to numpy array (int16)
         audio_int16 = np.frombuffer(raw_data, dtype=np.int16)
-        
-        # Convert to float32 normalized between -1.0 and 1.0
         audio_float32 = audio_int16.astype(np.float32) / 32768.0
         
         return audio_float32
 
-    def write_chunk(self, audio_data):
+    def write_chunk(self, audio_data: Union[bytes, np.ndarray, None]) -> None:
         """
         Plays a chunk of audio out to the speakers.
         
-        Steps:
-        1. Receive audio data (likely bytes or numpy array).
-        2. Write data to the output stream.
+        Accepts audio data as bytes or numpy array (float32 or int16) and writes
+        it to the output stream. Automatically converts float32 arrays to int16
+        format required by PyAudio.
+        
+        Args:
+            audio_data: Audio data as bytes or numpy array (float32 normalized
+                between -1.0 and 1.0, or int16). If None or hardware unavailable,
+                the operation is silently skipped.
+        
+        Returns:
+            None
         """
         if not self._pyaudio_available or self.output_stream is None:
-            # Skip writing if no hardware is available or output stream failed to initialize
             return
         
-        # Convert numpy array to int16 if needed
         if isinstance(audio_data, np.ndarray):
             if audio_data.dtype == np.float32:
-                # Normalize from -1.0 to 1.0 range to int16
                 audio_data = (audio_data * 32768.0).astype(np.int16)
             elif audio_data.dtype != np.int16:
                 audio_data = audio_data.astype(np.int16)
             
-            # Convert to bytes
             audio_bytes = audio_data.tobytes()
         else:
-            # Assume it's already bytes
             audio_bytes = audio_data
         
-        # Write to output stream
         self.output_stream.write(audio_bytes)
 
-    def close(self):
+    def close(self) -> None:
         """
         Cleanup resources.
-        1. Stop and close streams.
-        2. Terminate PyAudio instance.
+        
+        Stops and closes all audio streams (input and output), then terminates
+        the PyAudio instance. Errors during cleanup are silently ignored to ensure
+        resources are released even if streams are in an invalid state.
+        
+        Returns:
+            None
         """
         if self.input_stream is not None:
             try:

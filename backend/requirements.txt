@@ -5,7 +5,7 @@ aubio>=0.4.9
 numpy>=1.24.0
 
 # Voice Activity Detection
-# Note: Install CPU-only PyTorch to avoid 2.5GB CUDA download:
+# CPU-only PyTorch for wider hardware compatibility
 # pip install torch --index-url https://download.pytorch.org/whl/cpu
 torch>=2.0.0
 silero-vad>=4.0.0

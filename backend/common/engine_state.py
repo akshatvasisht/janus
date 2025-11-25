@@ -1,11 +1,20 @@
+"""
+Shared engine state management.
+
+Provides global control state and event queues for communication between
+the WebSocket handlers and the Smart Ear engine loop.
+"""
+
 import asyncio
-from pydantic import BaseModel
 from typing import Optional
+
+from pydantic import BaseModel
+
 from ..api.types import (
-    JanusMode,
     EmotionOverride,
-    TranscriptMessage,
+    JanusMode,
     PacketSummaryMessage,
+    TranscriptMessage,
 )
 
 
@@ -25,12 +34,17 @@ class ControlState(BaseModel):
 control_state = ControlState()
 
 # Queues for events emitted by the engine
-# We initialize them as None and create them on startup to ensure they bind to the correct loop
 transcript_queue: Optional[asyncio.Queue] = None
 packet_queue: Optional[asyncio.Queue] = None
 
 
 def get_transcript_queue() -> asyncio.Queue:
+    """
+    Get or create the transcript queue for emitting transcript messages.
+    
+    Returns:
+        asyncio.Queue: Queue for transcript messages.
+    """
     global transcript_queue
     if transcript_queue is None:
         transcript_queue = asyncio.Queue()
@@ -38,14 +52,25 @@ def get_transcript_queue() -> asyncio.Queue:
 
 
 def get_packet_queue() -> asyncio.Queue:
+    """
+    Get or create the packet queue for emitting packet summary messages.
+    
+    Returns:
+        asyncio.Queue: Queue for packet summary messages.
+    """
     global packet_queue
     if packet_queue is None:
         packet_queue = asyncio.Queue()
     return packet_queue
 
 
-def reset_queues():
-    """Helper for tests to reset queues between runs"""
+def reset_queues() -> None:
+    """
+    Reset queues for testing purposes.
+    
+    Returns:
+        None
+    """
     global transcript_queue, packet_queue
     transcript_queue = asyncio.Queue()
     packet_queue = asyncio.Queue()

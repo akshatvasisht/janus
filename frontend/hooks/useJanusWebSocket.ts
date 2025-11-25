@@ -18,6 +18,16 @@ export const queryKeys = {
   connectionStatus: ['janus', 'connectionStatus'] as const,
 };
 
+/**
+ * WebSocket hook for Janus backend communication.
+ * 
+ * Manages WebSocket connection lifecycle, automatic reconnection, and React Query
+ * cache updates for transcripts and packet summaries. Handles sending control messages
+ * to the backend and receiving transcript/packet events.
+ * 
+ * @returns Object containing connection status, transcripts, last packet summary,
+ *   control message sender, and connection management functions.
+ */
 export function useJanusWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
   const [connectionStatus, setConnectionStatus] =

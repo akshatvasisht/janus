@@ -5,11 +5,12 @@ Records 1 second of real audio and saves to test_output.wav.
 If the file is silence/static, indicates OS audio driver issues.
 """
 
-import pyaudio
-import wave
-import numpy as np
-import sys
 import os
+import sys
+import wave
+
+import numpy as np
+import pyaudio
 
 # Add backend to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))

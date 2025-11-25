@@ -4,16 +4,24 @@ Purpose: Acts as the 'Gatekeeper'. Uses Silero-VAD to analyze audio chunks
          and determine if they contain human speech or just background noise.
 """
 
-import torch
 import numpy as np
+import torch
 
 class VoiceActivityDetector:
-    def __init__(self, threshold=0.5, sample_rate=44100):
+    def __init__(self, threshold: float = 0.5, sample_rate: int = 44100) -> None:
         """
         Initialize the VAD Model.
-        1. Load the pre-trained 'silero-vad' model from torch.hub or local cache.
-        2. Set the sensitivity threshold (e.g., 0.5). Values above this are 'Speech', below are 'Silence'.
-        3. Set the sample rate (default 44100 Hz). VAD will downsample to 16k internally if needed.
+        
+        Loads the pre-trained Silero-VAD model from torch.hub or local cache and
+        configures it for speech detection. The model operates at 16kHz internally
+        and will automatically downsample higher sample rates.
+        
+        Args:
+            threshold: Sensitivity threshold between 0.0 and 1.0. Audio chunks with
+                speech probability above this value are classified as speech.
+                Default is 0.5.
+            sample_rate: Input audio sample rate in Hz. Default is 44100 Hz.
+                The model will downsample to 16kHz internally if needed.
         """
         self.threshold = threshold
         self.sample_rate = sample_rate
@@ -29,22 +37,18 @@ class VoiceActivityDetector:
         # Set model to evaluation mode
         self.model.eval()
 
-    def is_speech(self, audio_chunk):
+    def is_speech(self, audio_chunk: np.ndarray) -> bool:
         """
         Analyzes a single audio chunk to detect speech.
 
         Args:
-            audio_chunk: A numpy array of float32 audio samples.
+            audio_chunk: A numpy array of float32 audio samples normalized between
+                -1.0 and 1.0.
 
-        Steps:
-        1. Downsample audio if sample rate is 44100 Hz (Silero VAD requires 16k or 8k).
-        2. Pass the audio_chunk to the Silero model.
-        3. Get the probability score (0.0 to 1.0).
-        4. Compare score > threshold.
-        5. Return True if speech is detected, False otherwise.
+        Returns:
+            bool: True if speech is detected (probability exceeds threshold),
+                False otherwise.
         """
-        # Downsample 44100 -> ~14700 (close enough for VAD) by taking every 3rd sample
-        # This is a fast hack for the hackathon to avoid heavy resampling libraries.
         if self.sample_rate == 44100:
             audio_chunk = audio_chunk[::3]
             vad_sample_rate = 16000  # Silero VAD expects 16k
@@ -68,11 +72,13 @@ class VoiceActivityDetector:
         # Return True if probability exceeds threshold
         return speech_prob > self.threshold
 
-    def reset(self):
+    def reset(self) -> None:
         """
-        Reset the model state (if using a stateful recurrent model).
-        Useful between distinct conversation turns.
+        Reset the model state.
+        
+        Maintained for API consistency. This method is a no-op for stateless models.
+        
+        Returns:
+            None
         """
-        # Silero VAD v4 is stateless, so this is a no-op
-        # But we keep the method for API consistency
         pass

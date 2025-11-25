@@ -1,3 +1,11 @@
+"""
+API type definitions for WebSocket communication.
+
+Defines Pydantic models and enums used for bi-directional WebSocket messaging
+between the frontend and backend. Includes control messages, transcript messages,
+and packet summary messages.
+"""
+
 from enum import Enum
 from typing import Literal, Optional
 from pydantic import BaseModel

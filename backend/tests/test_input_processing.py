@@ -3,24 +3,25 @@ Test Suite for Phase 2 Input Processing Components
 Tests AudioService, VoiceActivityDetector, Transcriber, ProsodyExtractor, and sender_main orchestration
 """
 
-import pytest
-import numpy as np
+import os
 import queue
+import sys
 import threading
 import time
-from unittest.mock import Mock, MagicMock, patch, PropertyMock
-import sys
-import os
+from unittest.mock import MagicMock, Mock, PropertyMock, patch
+
+import numpy as np
+import pytest
 
 # Add project root to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
+import backend.scripts.sender_main as sender_main
+from backend.scripts.sender_main import audio_consumer, audio_producer
 from backend.services.audio_io import AudioService
-from backend.services.vad import VoiceActivityDetector
-from backend.services.transcriber import Transcriber
 from backend.services.prosody import ProsodyExtractor
-from backend.sender_main import audio_producer, audio_consumer
-import backend.sender_main as sender_main
+from backend.services.transcriber import Transcriber
+from backend.services.vad import VoiceActivityDetector
 
 
 # ============================================================================

@@ -1,19 +1,16 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import logging
 import threading
 from contextlib import asynccontextmanager
 
-# API Routers
-# Note: Using relative imports assuming this file is run as a module (e.g. uvicorn backend.server:app)
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 from .api.endpoints import router as api_router
 from .api.socket_manager import router as ws_router
-
-# Engine & State
 from .common import engine_state
-from .services.engine import smart_ear_loop, receiver_loop
 from .services.audio_io import AudioService
+from .services.engine import receiver_loop, smart_ear_loop
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,7 +18,18 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup logic
+    """
+    Application lifespan context manager.
+    
+    Manages startup and shutdown of the Smart Ear engine, including audio service
+    initialization, background tasks, and receiver loop thread.
+    
+    Args:
+        app: FastAPI application instance.
+    
+    Yields:
+        None: Control is yielded to the application runtime.
+    """
     logger.info("Starting Smart Ear Engine...")
 
     # Initialize shared AudioService for full-duplex audio
@@ -81,13 +89,20 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
+    """
+    Create and configure the FastAPI application.
+    
+    Sets up CORS middleware and registers API and WebSocket routers.
+    
+    Returns:
+        FastAPI: Configured FastAPI application instance.
+    """
     app = FastAPI(
         title="Janus Backend",
         version="0.1.0",
         lifespan=lifespan,
     )
 
-    # CORS (Allow frontend access)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -96,7 +111,6 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Register Routers
     app.include_router(api_router, prefix="/api")
     app.include_router(ws_router)
 

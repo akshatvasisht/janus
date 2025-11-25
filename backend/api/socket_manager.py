@@ -1,19 +1,34 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+"""
+WebSocket manager for bi-directional communication with frontend.
+
+Handles WebSocket connections, receives control messages from the frontend,
+and forwards transcript and packet summary events from the engine to the frontend.
+"""
+
 import asyncio
 import json
 
-from .types import ControlMessage, JanusOutboundMessage
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
 from ..common import engine_state
+from .types import ControlMessage, JanusOutboundMessage
 
 router = APIRouter()
 
 
 @router.websocket("/ws/janus")
-async def janus_ws(websocket: WebSocket):
+async def janus_ws(websocket: WebSocket) -> None:
     """
     Bi-directional WebSocket for Janus.
-    - Receives ControlMessage from frontend, updates engine_state.control_state
-    - Sends TranscriptMessage and PacketSummaryMessage from engine queues
+    
+    Receives ControlMessage from frontend and updates engine_state.control_state.
+    Sends TranscriptMessage and PacketSummaryMessage from engine queues.
+    
+    Args:
+        websocket: WebSocket connection instance.
+    
+    Returns:
+        None
     """
     await websocket.accept()
 
@@ -21,23 +36,19 @@ async def janus_ws(websocket: WebSocket):
     send_task = asyncio.create_task(_send_loop(websocket))
 
     try:
-        # Wait for either task to finish (usually recv_loop ends on disconnect)
         done, pending = await asyncio.wait(
             [recv_task, send_task], return_when=asyncio.FIRST_COMPLETED
         )
 
-        # Cancel whichever is still running
         for task in pending:
             task.cancel()
 
-        # Check for exceptions in the done task
         for task in done:
             try:
                 task.result()
             except asyncio.CancelledError:
                 pass
             except WebSocketDisconnect:
-                # Normal disconnect
                 pass
             except Exception as e:
                 print(f"Task failed: {e}")
@@ -45,14 +56,19 @@ async def janus_ws(websocket: WebSocket):
     except Exception as e:
         print(f"WebSocket handler error: {e}")
     finally:
-        # Ensure everything is cleaned up
         recv_task.cancel()
         send_task.cancel()
 
 
-async def _recv_loop(websocket: WebSocket):
+async def _recv_loop(websocket: WebSocket) -> None:
     """
     Receive ControlMessage payloads from frontend and update control_state.
+    
+    Args:
+        websocket: WebSocket connection instance.
+    
+    Returns:
+        None
     """
     try:
         while True:
@@ -63,7 +79,6 @@ async def _recv_loop(websocket: WebSocket):
                 msg = ControlMessage(**data)
                 _apply_control_message(msg)
     except WebSocketDisconnect:
-        # Normal closure
         raise
     except asyncio.CancelledError:
         raise
@@ -71,10 +86,15 @@ async def _recv_loop(websocket: WebSocket):
         print(f"Error in recv loop: {e}")
 
 
-def _apply_control_message(msg: ControlMessage):
+def _apply_control_message(msg: ControlMessage) -> None:
     """
-    Update engine_state.control_state with non-None fields
-    from a ControlMessage.
+    Update engine_state.control_state with non-None fields from a ControlMessage.
+    
+    Args:
+        msg: ControlMessage containing state updates.
+    
+    Returns:
+        None
     """
     state = engine_state.control_state
 
@@ -93,9 +113,15 @@ def _apply_control_message(msg: ControlMessage):
     print(f"Control State Updated: {state}")
 
 
-async def _send_loop(websocket: WebSocket):
+async def _send_loop(websocket: WebSocket) -> None:
     """
     Drain transcript_queue and packet_queue and forward to frontend.
+    
+    Args:
+        websocket: WebSocket connection instance.
+    
+    Returns:
+        None
     """
     transcript_queue = engine_state.get_transcript_queue()
     packet_queue = engine_state.get_packet_queue()
@@ -124,8 +150,15 @@ async def _send_loop(websocket: WebSocket):
         print(f"Error in send loop: {e}")
 
 
-async def _send_event(websocket: WebSocket, event: JanusOutboundMessage):
+async def _send_event(websocket: WebSocket, event: JanusOutboundMessage) -> None:
     """
     Serialize a Pydantic outbound message to JSON and send over WebSocket.
+    
+    Args:
+        websocket: WebSocket connection instance.
+        event: Outbound message to send.
+    
+    Returns:
+        None
     """
     await websocket.send_text(event.model_dump_json())

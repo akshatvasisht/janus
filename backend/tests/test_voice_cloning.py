@@ -3,16 +3,17 @@ Test Suite for Voice Cloning Features
 Tests the voice verification API endpoint and Synthesizer hot-reload functionality.
 """
 
-import pytest
-from unittest.mock import Mock, MagicMock, patch, mock_open
-import sys
-import os
 import io
+import os
+import sys
+from unittest.mock import MagicMock, Mock, mock_open, patch
+
+import pytest
+from fastapi.testclient import TestClient
 
 # Add project root to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
-from fastapi.testclient import TestClient
 from backend.server import app
 from backend.services.synthesizer import Synthesizer
 
