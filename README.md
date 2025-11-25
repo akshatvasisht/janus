@@ -29,35 +29,35 @@ For detailed setup instructions, see [SETUP.md](SETUP.md).
 
 ```
 MadHacks/
-├── backend/              # Python FastAPI backend
-│   ├── api/             # REST endpoints and WebSocket handlers
-│   ├── common/          # Shared protocol and state management
-│   ├── services/        # Audio processing services
-│   │   ├── audio_io.py  # Microphone capture and speaker output
-│   │   ├── engine.py    # Smart Ear engine loop
-│   │   ├── vad.py       # Voice activity detection
-│   │   ├── transcriber.py  # Speech-to-text
-│   │   ├── prosody.py   # Prosody extraction
-│   │   ├── synthesizer.py  # Voice synthesis
-│   │   └── link_simulator.py  # Network simulation
-│   ├── server.py        # Unified backend entry point
-│   └── tests/           # Test suite
-├── frontend/            # Next.js React frontend
-│   ├── app/            # Next.js app router pages
-│   ├── components/     # React UI components
-│   ├── hooks/          # Custom React hooks
-│   └── types/          # TypeScript type definitions
-├── requirements.txt     # Python dependencies
-└── SETUP.md            # Setup instructions
+├── backend/                    # Python FastAPI backend
+│   ├── api/                    # REST endpoints and WebSocket handlers
+│   ├── common/                 # Shared protocol and state management
+│   ├── services/               # Audio processing services
+│   │   ├── audio_io.py         # Microphone capture and speaker output
+│   │   ├── engine.py           # Smart Ear engine loop
+│   │   ├── vad.py              # Voice activity detection
+│   │   ├── transcriber.py      # Speech-to-text
+│   │   ├── prosody.py          # Prosody extraction
+│   │   ├── synthesizer.py      # Voice synthesis
+│   │   └── link_simulator.py   # Network simulation
+│   ├── server.py               # Unified backend entry point
+│   └── tests/                  # Test suite
+├── frontend/                   # Next.js React frontend
+│   ├── app/                    # Next.js app router pages
+│   ├── components/             # React UI components
+│   ├── hooks/                  # Custom React hooks
+│   └── types/                  # TypeScript type definitions
+├── requirements.txt            # Python dependencies
+└── SETUP.md                    # Setup instructions
 ```
 
 ## Documentation
 
 - **[SETUP.md](SETUP.md)**: Environment setup and installation instructions
-- **[projectdocs.md](projectdocs.md)**: Detailed architecture documentation and glossary
-- **[API.md](API.md)**: WebSocket and REST API documentation
-- **[TESTING.md](TESTING.md)**: Testing guidelines and procedures
-- **[STYLE.md](STYLE.md)**: Coding standards and style guide
+- **[docs/projectdocs.md](docs/projectdocs.md)**: Detailed architecture documentation and glossary
+- **[docs/API.md](docs/API.md)**: WebSocket and REST API documentation
+- **[docs/TESTING.md](docs/TESTING.md)**: Testing guidelines and procedures
+- **[docs/STYLE.md](docs/STYLE.md)**: Coding standards and style guide
 
 ## Usage
 

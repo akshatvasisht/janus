@@ -94,13 +94,13 @@ Janus is a real-time semantic audio codec system designed to optimize bandwidth 
 
 ### 4.2 Core Components
 
-**Frontend (The "Face"):**
+**Frontend:**
 
 * **Stack:** Next.js 14 (React), Tailwind CSS, Recharts.
 * **Role:** Provides the user interface for Push-to-Talk (PTT) interaction and visualizes real-time telemetry (bandwidth vs. cost).
 * **Communication:** Connects to the backend via WebSockets (useJanusSocket).
 
-**Backend (The "Brain"):**
+**Backend:**
 
 * **Stack:** Python 3.10+, FastAPI.
 * **Role:** Orchestrates the audio processing pipeline and manages WebSocket connections.

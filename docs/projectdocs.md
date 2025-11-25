@@ -94,12 +94,14 @@ MadHacks/
 │   └── types/
 │       └── janus.ts            # TypeScript type definitions
 │
+├── docs/                       # Documentation
+│   ├── API.md                  # API documentation
+│   ├── TESTING.md              # Testing guidelines
+│   ├── projectdocs.md          # This file
+│   └── STYLE.md                # Coding standards
 ├── README.md                   # Project overview
 ├── SETUP.md                    # Setup instructions
-├── API.md                      # API documentation
-├── TESTING.md                  # Testing guidelines
-├── STYLE.md                    # Coding standards
-└── projectdocs.md              # This file
+└── .gitignore                  # Git ignore patterns
 ```
 
 **Note:** The `/telemetry` page is planned for future implementation to provide real-time bandwidth visualization and packet logging.

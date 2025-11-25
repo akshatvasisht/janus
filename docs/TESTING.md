@@ -156,7 +156,7 @@ python tests/manual_sender.py
 
 ### CLI Sender/Receiver Testing
 
-The standalone CLI tools (`sender_main.py` and `receiver_main.py`) can be used for network testing:
+The standalone CLI tools (`scripts/sender_main.py` and `scripts/receiver_main.py`) can be used for network testing:
 
 **Receiver (Terminal 1):**
 
@@ -165,7 +165,7 @@ cd backend
 source venv/bin/activate
 export FISH_AUDIO_API_KEY=your_api_key
 export RECEIVER_PORT=5005
-python receiver_main.py
+python scripts/receiver_main.py
 ```
 
 **Sender (Terminal 2):**
@@ -175,7 +175,7 @@ cd backend
 source venv/bin/activate
 export TARGET_IP=127.0.0.1
 export TARGET_PORT=5005
-python sender_main.py
+python scripts/sender_main.py
 ```
 
 **What it tests:**
