@@ -158,8 +158,6 @@ python tests/manual_sender.py
 
 The standalone CLI tools (`backend/scripts/sender_main.py` and `backend/scripts/receiver_main.py`) can be used for network testing.
 
-**Important**: These scripts must be run as Python modules from the project root directory due to their import structure.
-
 **Receiver (Terminal 1):**
 
 ```bash

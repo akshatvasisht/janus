@@ -94,12 +94,13 @@ MadHacks/
 │   └── types/
 │       └── janus.ts                # TypeScript type definitions
 │
+├── docs/                           # Documentation directory
+│   ├── API.md                      # API documentation
+│   ├── TESTING.md                  # Testing guidelines
+│   ├── STYLE.md                    # Coding standards
+│   └── projectdocs.md              # This file
 ├── README.md                       # Project overview
-├── SETUP.md                        # Setup instructions
-├── API.md                          # API documentation
-├── TESTING.md                      # Testing guidelines
-├── STYLE.md                        # Coding standards
-└── projectdocs.md                  # This file
+└── SETUP.md                        # Setup instructions
 ```
 
 **Note:** The `/telemetry` page is planned for future implementation to provide real-time bandwidth visualization and packet logging.
@@ -225,7 +226,7 @@ Janus supports three transmission modes (defined in `JanusMode` enum):
 3. **MORSE_CODE (Mode 2)**: Morse code transmission
    - Converts text to Morse code patterns and generates sine wave audio locally
    - Uses 800 Hz frequency for tone generation
-   - Bypasses TTS synthesis entirely (no API calls required)
+   - Bypasses TTS synthesis
 
 ---
 
