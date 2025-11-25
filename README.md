@@ -32,7 +32,7 @@ Janus achieves significant efficiency gains through semantic compression:
 
 **Public Safety and Disaster Relief**
 - Reliable communication when infrastructure fails during mass casualty events (Maui wildfires, Hurricane Helene)
-- Cognitive Firewall: Crystal-clear synthesized instructions reduce cognitive load on first responders
+- Crystal-clear synthesized audio reduces cognitive load on first responders
 
 **Global South and Rural Connectivity**
 - Voice over ultra-low-power networks (LoRaWAN, LPWAN) where high-bandwidth is unviable
@@ -49,8 +49,6 @@ Janus achieves significant efficiency gains through semantic compression:
 **Low-Power/Off-Grid IoT**
 - Voice commands on battery-powered devices and sensor networks
 - Complies with strict regulatory duty cycle limits (1% Europe) impossible for continuous voice
-
----
 
 ## Documentation
 
