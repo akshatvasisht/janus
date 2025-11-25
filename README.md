@@ -16,7 +16,7 @@ Janus achieves breakthrough efficiency in voice transmission:
 
 Enables voice over infrastructure previously limited to text: disaster relief, maritime operations, remote mining, rural connectivity, and battery-powered IoT devices.
 
-For technical details, benchmarks, and use cases, see [docs/projectdocs.md](docs/projectdocs.md).
+For technical details, benchmarks, and use cases, see [ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Quick Start
 
@@ -50,7 +50,7 @@ MadHacks/
 ## Documentation
 
 - **[SETUP.md](SETUP.md)**: Environment setup and installation
-- **[projectdocs.md](docs/projectdocs.md)**: Architecture, tech stack, and design decisions
+- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)**: Architecture, tech stack, and design decisions
 - **[API.md](docs/API.md)**: WebSocket and REST API reference
 - **[TESTING.md](docs/TESTING.md)**: Testing guidelines
 - **[STYLE.md](docs/STYLE.md)**: Coding standards
