@@ -1,40 +1,26 @@
 # Janus Architecture Documentation
 
-This document provides detailed architectural documentation, design decisions, and a glossary of terms for the Janus semantic audio codec system.
+This document provides detailed architectural documentation, design decisions, and a glossary of terms for the Janus semantic audio codec system, which operates at 300 bits per second (bps) through semantic compression.
+
+---
 
 ## Glossary of Terms
 
-- **VAD (Voice Activity Detection):** A software module (using `silero-vad`) that detects when a person is speaking versus silence. It acts as a gatekeeper to ensure we only process audio when necessary.
-
-- **STT (Speech-to-Text):** The process of converting spoken audio into text strings. Uses `faster-whisper` (a highly optimized local model) for this conversion.
-
-- **TTS (Text-to-Speech):** The process of generating audio from text. Uses the **Fish Audio SDK** to synthesize voice from semantic data.
-
-- **Prosody:** The rhythm, stress, and intonation of speech (pitch, volume, speed). Extracted from audio to preserve emotional context.
-
-- **Aubio:** A lightweight library used to extract pitch (F0) and energy from audio in real-time.
-
-- **MessagePack (MsgPack):** A binary serialization format (like JSON, but much smaller/faster) used to package data for transmission.
-
-- **Audio Ducking:** A technique where the volume of one audio stream is automatically lowered when another stream starts playing (used for allowing interruptions). *Note: Planned for future implementation.*
-
-- **F0 (Fundamental Frequency):** The primary frequency of the voice, perceived as "pitch."
+- **Semantic Codec:** The core concept of Janus - transmitting semantic meaning (text + metadata) rather than raw audio waveforms, enabling communication over extremely constrained bandwidth.
 
 - **Smart Ear:** The unified audio processing engine (`engine.py`) that manages continuous audio capture, VAD gating, transcription, prosody extraction, and packet transmission.
 
 - **Control State:** Shared state object (`engine_state.ControlState`) that holds current mode, streaming/recording flags, and emotion override settings. Updated by WebSocket control messages and read by the Smart Ear engine.
 
-- **Semantic Codec:** The core concept of Janus - transmitting semantic meaning (text + metadata) rather than raw audio waveforms, enabling communication over extremely constrained bandwidth.
-
-- **Link Simulator:** Module (`link_simulator.py`) that simulates constrained network connections (e.g., 300bps) by throttling packet transmission rates.
-
 - **Janus Packet:** The binary packet structure (`JanusPacket`) containing text, mode, prosody data, and optional emotion override. Serialized using MessagePack for efficient transmission.
 
-- **Full-Duplex Audio:** The capability to simultaneously capture microphone input and play speaker output, managed by the shared `AudioService` instance.
+- **Link Simulator:** Module (`link_simulator.py`) that simulates constrained network connections (e.g., 300bps) by throttling packet transmission rates.
 
 - **Engine Loop:** The main processing loop (`smart_ear_loop`) that continuously reads control state, captures audio, processes it through the pipeline, and transmits packets.
 
 - **Receiver Loop:** Background thread (`receiver_loop`) that listens for incoming Janus packets, deserializes them, synthesizes audio, and queues it for playback.
+
+- **Prosody:** The rhythm, stress, and intonation of speech (pitch, volume, speed). Extracted from audio to preserve emotional context.
 
 ---
 
@@ -111,18 +97,18 @@ MadHacks/
 
 | **Category**           | **Technology**            | **Purpose**                                             | **Rationale**                                                                                 |
 | ---------------------- | ------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| **Frontend Framework** | **React (via Next.js 14)** | User interface (Dashboard, Controls, Transcript Display) | Strong conventions (App Router) enable rapid development with consistent patterns. |
-| **Styling**            | **Tailwind CSS**          | UI styling (Dark mode, responsive design)            | Rapid prototyping without writing custom CSS files.                                      |
-| **Visualization**      | **Recharts**              | Real-time data visualization (planned for telemetry)      | Simple, composable React chart library.                                                  |
-| **Backend API**        | **FastAPI**               | REST and WebSocket server                              | Async support is critical for real-time streaming updates.                               |
-| **Speech-to-Text**     | **faster-whisper**        | Local speech transcription (Int8 quantized)            | Optimized version of Whisper; runs efficiently on CPU without GPU requirements.                        |
-| **Voice Detection**    | **silero-vad**            | Voice activity detection (gatekeeper)                   | Extremely lightweight and low-latency compared to WebRTC VAD.                            |
-| **Prosody Analysis**   | **aubio**                 | Pitch (F0) and energy extraction                        | Real-time C-library optimized for audio feature extraction.                              |
-| **Generative TTS**     | **Fish Audio SDK**        | Voice synthesis from text + metadata                    | Enables voice reconstruction from semantic data.                              |
-| **Audio I/O**          | **PyAudio**               | Microphone capture and speaker playback                 | Lower latency and more reliable than browser-based audio for Python processing.          |
-| **Protocol**           | **MessagePack**           | Binary serialization of Janus packets                   | Significantly smaller and faster than JSON for bandwidth-constrained transmission.                        |
-| **Network Logic**      | **Python `socket`**       | TCP/UDP socket communication with throttling            | Native library allows manual control of transmission rate for simulation.                            |
-| **Communication**      | **WebSockets**            | Real-time bidirectional communication (FastAPI)          | Low latency communication to update the UI in real-time.                          |
+| **Frontend Framework** | **React (via Next.js 14)** | User interface (Dashboard, Controls, Transcript Display) | App Router enables rapid development |
+| **Styling**            | **Tailwind CSS**          | UI styling (Dark mode, responsive design)            | Rapid prototyping without custom CSS                                      |
+| **Visualization**      | **Recharts**              | Real-time data visualization (planned for telemetry)      | Simple, composable React charts                                                  |
+| **Backend API**        | **FastAPI**               | REST and WebSocket server                              | Async support for real-time streaming                               |
+| **Speech-to-Text**     | **faster-whisper**        | Local speech transcription (Int8 quantized)            | Optimized Whisper runs efficiently on CPU                        |
+| **Voice Detection**    | **silero-vad**            | Voice activity detection (gatekeeper)                   | Lightweight and low-latency                            |
+| **Prosody Analysis**   | **aubio**                 | Pitch (F0) and energy extraction                        | Real-time audio feature extraction                              |
+| **Generative TTS**     | **Fish Audio SDK**        | Voice synthesis from text + metadata                    | Voice reconstruction from semantic data                              |
+| **Audio I/O**          | **PyAudio**               | Microphone capture and speaker playback                 | Lower latency than browser audio          |
+| **Protocol**           | **MessagePack**           | Binary serialization of Janus packets                   | Smaller and faster than JSON                        |
+| **Network Logic**      | **Python `socket`**       | TCP/UDP socket communication with throttling            | Manual control of transmission rate                            |
+| **Communication**      | **WebSockets**            | Real-time bidirectional communication (FastAPI)          | Low latency UI updates                          |
 
 ---
 
@@ -182,8 +168,9 @@ These tools operate independently of the unified backend and do not use WebSocke
 
 ## Data Flow
 
-### Input Pipeline (Sender Side)
+### Complete Audio Pipeline
 
+**Sender Side:**
 1. **Audio Capture**: `AudioService` continuously reads microphone input chunks
 2. **VAD Filtering**: When `is_streaming=True`, audio passes through VAD to detect speech segments
 3. **Recording Mode**: When `is_recording=True`, all audio is buffered until flag is cleared
@@ -193,18 +180,12 @@ These tools operate independently of the unified backend and do not use WebSocke
 7. **Serialization**: Packet is serialized using MessagePack
 8. **Transmission**: Serialized packet is sent via `LinkSimulator` (with throttling for simulation)
 
-### Output Pipeline (Receiver Side)
-
+**Receiver Side:**
 1. **Network Reception**: `receiver_loop` receives TCP connection and reads packet data
 2. **Deserialization**: MessagePack data is deserialized into `JanusPacket`
 3. **Synthesis**: Fish Audio SDK synthesizes audio from text + prosody metadata
 4. **Playback Queue**: Audio bytes are queued for playback worker
 5. **Audio Output**: `AudioService` writes audio chunks to speaker
-
-### WebSocket Communication
-
-- **Frontend → Backend**: `ControlMessage` updates control state (mode, flags, emotion override)
-- **Backend → Frontend**: `TranscriptMessage` (text + prosody) and `PacketSummaryMessage` (packet size, mode, timestamp)
 
 ---
 
@@ -231,6 +212,15 @@ Janus supports three transmission modes (defined in `JanusMode` enum):
 ---
 
 ## Design Decisions
+
+### Latency/Bitrate Trade-off
+
+The 300 bps target bitrate requires semantic compression (~136 bps payload) instead of acoustic waveform reconstruction, resulting in a walkie-talkie interaction model with 2.8-3.0 second turnaround latency:
+
+- Latency is driven by the need to buffer complete phrases for generative AI (Whisper ASR, Fish Audio TTS).
+- Processing starts after 16 consecutive silence chunks (~500ms) to ensure semantic completeness.
+- Faster-Whisper uses greedy decoding (beam_size=1) to reduce compute time with minimal accuracy loss.
+- Bandwidth efficiency is prioritized over low latency for scenarios where traditional codecs are unsuitable.
 
 ### Unified Backend vs. Separate Sender/Receiver
 
