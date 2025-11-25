@@ -1,10 +1,22 @@
 # Janus - Real-Time Semantic Audio Codec
 
+Submission for MadHacks 2025
+
 Janus is a real-time semantic audio codec system designed to optimize bandwidth by transmitting semantic meaning rather than raw audio waveforms. Instead of sending compressed audio data, Janus converts speech to text, extracts prosodic metadata (pitch and energy), and reconstructs the voice on the receiver side using generative text-to-speech synthesis.
 
 This approach enables high-quality voice communication over extremely constrained network connections (as low as 300bps), then reconstructed into natural-sounding speech using modern generative TTS models.
 
-Submission for MadHacks 2025
+## Impact
+
+Janus achieves breakthrough efficiency in voice transmission:
+
+- **158x Cost Reduction**: Satellite voice from $0.89/min to $0.0056/event
+- **20x More Efficient**: Than standard VoIP codecs (300 bps vs. ~6 kbps)
+- **Operational Transformation**: Monthly fleet costs from $13,350 to $84
+
+Enables voice over infrastructure previously limited to text: disaster relief, maritime operations, remote mining, rural connectivity, and battery-powered IoT devices.
+
+For technical details, benchmarks, and use cases, see [docs/projectdocs.md](docs/projectdocs.md).
 
 ## Quick Start
 
@@ -19,7 +31,7 @@ For detailed setup instructions, see [SETUP.md](SETUP.md).
 
 ```
 MadHacks/
-├── backend/           # Python FastAPI backend
+├── backend/          # Python FastAPI backend
 │   ├── api/          # REST and WebSocket endpoints
 │   ├── common/       # Protocol and state management
 │   ├── services/     # Audio processing services
@@ -38,10 +50,10 @@ MadHacks/
 ## Documentation
 
 - **[SETUP.md](SETUP.md)**: Environment setup and installation
-- **[docs/projectdocs.md](docs/projectdocs.md)**: Architecture, tech stack, and design decisions
-- **[docs/API.md](docs/API.md)**: WebSocket and REST API reference
-- **[docs/TESTING.md](docs/TESTING.md)**: Testing guidelines
-- **[docs/STYLE.md](docs/STYLE.md)**: Coding standards
+- **[projectdocs.md](docs/projectdocs.md)**: Architecture, tech stack, and design decisions
+- **[API.md](docs/API.md)**: WebSocket and REST API reference
+- **[TESTING.md](docs/TESTING.md)**: Testing guidelines
+- **[STYLE.md](docs/STYLE.md)**: Coding standards
 
 ## License
 

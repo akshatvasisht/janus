@@ -2,6 +2,54 @@
 
 This document provides detailed architectural documentation, design decisions, and a glossary of terms for the Janus semantic audio codec system.
 
+## Performance Characteristics
+
+Janus achieves significant efficiency gains through semantic compression:
+
+### Bandwidth Efficiency
+
+- **Operating Bitrate**: 300 bits per second (bps)
+- **Comparison to VoIP**: ~20x more efficient than standard VoIP codecs like Opus (which requires minimum ~6 kbps for robust operation)
+- **Comparison to SOTA Codecs**: 5-10x more efficient than state-of-the-art neural waveform codecs (Lyra/EnCodec, which reach a physical compression floor at ~1.5-3 kbps)
+
+### Cost Impact
+
+Janus achieves a 158x cost reduction for critical satellite communication:
+
+**Pricing Comparison:**
+- **Standard Satellite Voice** (Iridium Land): ~$0.89 per minute
+- **Janus Semantic Voice** (Iridium Certus Data): ~$0.0056 per event
+
+**Operational Impact:**
+For industrial users operating remote fleets, this transforms voice communication economics:
+- **Standard Voice OPEX**: $13,350/month for a single fleet
+- **Semantic Voice OPEX**: $84/month for the same fleet
+- **Savings**: Voice communication shifts from a major operational expense to negligible cost
+
+### Use Cases and Applications
+
+**Public Safety and Disaster Relief**
+- Reliable communication when infrastructure fails during mass casualty events (Maui wildfires, Hurricane Helene)
+- Cognitive Firewall: Crystal-clear synthesized instructions reduce cognitive load on first responders
+
+**Global South and Rural Connectivity**
+- Voice over ultra-low-power networks (LoRaWAN, LPWAN) where high-bandwidth is unviable
+- Addresses digital divide in underserved regions
+
+**Maritime Communications**
+- Primary/backup voice over expensive L-band satellites (Iridium/Inmarsat)
+- Eliminates economic friction discouraging detailed voice exchanges at sea
+
+**Smart Mining Operations**
+- Coordinates supervisors in remote surface operations
+- Maintains communication in subterranean GPS-denied environments
+
+**Low-Power/Off-Grid IoT**
+- Voice commands on battery-powered devices and sensor networks
+- Complies with strict regulatory duty cycle limits (1% Europe) impossible for continuous voice
+
+---
+
 ## Glossary of Terms
 
 - **VAD (Voice Activity Detection):** A software module (using `silero-vad`) that detects when a person is speaking versus silence. It acts as a gatekeeper to ensure we only process audio when necessary.
