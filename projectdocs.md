@@ -1,173 +1,268 @@
-# Implementation
+# Janus Architecture Documentation
 
-### **Glossary of Terms**
+This document provides detailed architectural documentation, design decisions, and a glossary of terms for the Janus semantic audio codec system.
+
+## Glossary of Terms
 
 - **VAD (Voice Activity Detection):** A software module (using `silero-vad`) that detects when a person is speaking versus silence. It acts as a gatekeeper to ensure we only process audio when necessary.
-- **STT (Speech-to-Text):** The process of converting spoken audio into text strings. We will use `faster-whisper` (a highly optimized local model) for this.
-- **TTS (Text-to-Speech):** The process of generating audio from text. We will use the **Fish Audio SDK** to "hallucinate" the voice back into existence.
-- **Prosody:** The rhythm, stress, and intonation of speech (pitch, volume, speed).
+
+- **STT (Speech-to-Text):** The process of converting spoken audio into text strings. Uses `faster-whisper` (a highly optimized local model) for this conversion.
+
+- **TTS (Text-to-Speech):** The process of generating audio from text. Uses the **Fish Audio SDK** to synthesize voice from semantic data.
+
+- **Prosody:** The rhythm, stress, and intonation of speech (pitch, volume, speed). Extracted from audio to preserve emotional context.
+
 - **Aubio:** A lightweight library used to extract pitch (F0) and energy from audio in real-time.
-- **MessagePack (MsgPack):** A binary serialization format (like JSON, but much smaller/faster) used to package our data for transmission.
-- **Audio Ducking:** A technique where the volume of one audio stream is automatically lowered when another stream starts playing (used for allowing interruptions).
+
+- **MessagePack (MsgPack):** A binary serialization format (like JSON, but much smaller/faster) used to package data for transmission.
+
+- **Audio Ducking:** A technique where the volume of one audio stream is automatically lowered when another stream starts playing (used for allowing interruptions). *Note: Planned for future implementation.*
+
 - **F0 (Fundamental Frequency):** The primary frequency of the voice, perceived as "pitch."
 
----
+- **Smart Ear:** The unified audio processing engine (`engine.py`) that manages continuous audio capture, VAD gating, transcription, prosody extraction, and packet transmission.
 
-### Repo Map
+- **Control State:** Shared state object (`engine_state.ControlState`) that holds current mode, streaming/recording flags, and emotion override settings. Updated by WebSocket control messages and read by the Smart Ear engine.
 
-/project-janus
-├── /backend # Python 3.10+ (FastAPI)
-│ ├── /services
+- **Semantic Codec:** The core concept of Janus - transmitting semantic meaning (text + metadata) rather than raw audio waveforms, enabling communication over extremely constrained bandwidth.
 
-│ │ ├── audio_io.py # Mic capture & Speaker output
-│ │ ├── [vad.py](http://vad.py/) # Silero-VAD logic
-│ │ ├── [transcriber.py](http://transcriber.py/) # Faster-Whisper (Int8)
-│ │ ├── [prosody.py](http://prosody.py/) # Aubio (Pitch/Energy)
-│ │ ├── [synthesizer.py](http://synthesizer.py/) # Fish Audio SDK
-│ │ └── link_simulator.py # Handles the 300bps throttle.
-│ ├── /common
+- **Link Simulator:** Module (`link_simulator.py`) that simulates constrained network connections (e.g., 300bps) by throttling packet transmission rates.
 
-│ │ └── [protocol.py](http://protocol.py/) # MessagePack serialization
-│ ├── /api
+- **Janus Packet:** The binary packet structure (`JanusPacket`) containing text, mode, prosody data, and optional emotion override. Serialized using MessagePack for efficient transmission.
 
-│ │ ├── [endpoints.py](http://endpoints.py/) # REST routes
-│ │ └── socket_manager.py # WebSocket: Pushes data to BOTH /app and /telemetry
-│ ├── sender_main.py
+- **Full-Duplex Audio:** The capability to simultaneously capture microphone input and play speaker output, managed by the shared `AudioService` instance.
 
-│ └── receiver_main.py
+- **Engine Loop:** The main processing loop (`smart_ear_loop`) that continuously reads control state, captures audio, processes it through the pipeline, and transmits packets.
 
-│
-├── /frontend # Next.js 14 (React)
-│ ├── /app
-
-│ │ ├── page.tsx # The Clean "User" Interface (PTT Button)
-│ │ ├── /telemetry # NEW: The "Demo" Interface (Graphs/Logs)
-│ │ │ └── page.tsx
-
-│ │ └── layout.tsx
-
-│ ├── /components
-
-│ │ ├── PushToTalk.tsx # The main interaction button
-│ │ ├── ModeToggle.tsx # Text-Only / Semantic Voice toggle
-│ │ ├── TelemetryGraph.tsx # Recharts component (used only in /telemetry)
-│ │ └── NetworkLog.tsx # Scrolling terminal of packet sizes
-│ └── /hooks
-
-│ └── useJanusSocket.ts # Connects UI to Python backend
-│
-├── requirements.txt
-
-└── package.json
+- **Receiver Loop:** Background thread (`receiver_loop`) that listens for incoming Janus packets, deserializes them, synthesizes audio, and queues it for playback.
 
 ---
 
-### Tech Stack
+## Repository Structure
 
-| **Category**           | **Technology**            | **Purpose**                                             | **Why?**                                                                                 |
+```
+MadHacks/
+├── backend/                    # Python 3.10+ (FastAPI)
+│   ├── api/
+│   │   ├── endpoints.py       # REST endpoints (/api/health, /api/voice/verify)
+│   │   ├── socket_manager.py  # WebSocket handler (ws://localhost:8000/ws/janus)
+│   │   └── types.py           # Pydantic models for WebSocket messages
+│   ├── common/
+│   │   ├── engine_state.py    # Shared control state and event queues
+│   │   └── protocol.py        # JanusPacket definition and MessagePack serialization
+│   ├── services/
+│   │   ├── audio_io.py         # Microphone capture & speaker output (PyAudio)
+│   │   ├── engine.py           # Smart Ear engine loop and receiver loop
+│   │   ├── vad.py              # Silero-VAD logic
+│   │   ├── transcriber.py      # Faster-Whisper (Int8 quantized)
+│   │   ├── prosody.py          # Aubio (Pitch/Energy extraction)
+│   │   ├── synthesizer.py      # Fish Audio SDK integration
+│   │   └── link_simulator.py   # Network throttling (300bps simulation)
+│   ├── server.py               # Unified backend entry point (FastAPI app)
+│   ├── sender_main.py          # CLI tool for direct network testing (standalone)
+│   ├── receiver_main.py        # CLI tool for direct network testing (standalone)
+│   ├── setup.sh                # Automated setup script
+│   └── tests/                  # Test suite
+│       ├── test_api_flow.py
+│       ├── test_engine.py
+│       ├── test_input_processing.py
+│       ├── test_synthesis.py
+│       ├── test_transport_layer.py
+│       ├── test_voice_cloning.py
+│       ├── hardware_check.py   # Manual hardware verification
+│       └── manual_sender.py    # Manual packet sender tool
+│
+├── frontend/                   # Next.js 14 (React)
+│   ├── app/
+│   │   ├── page.tsx            # Main user interface (PTT controls)
+│   │   ├── layout.tsx          # Root layout
+│   │   └── globals.css         # Global styles
+│   ├── components/
+│   │   ├── PushToTalk.tsx      # Main interaction button (hold-to-record)
+│   │   ├── ModeToggle.tsx      # Transmission mode selector
+│   │   ├── EmotionSelector.tsx # Emotion override selector
+│   │   ├── ControlPanel.tsx    # Control panel container
+│   │   ├── ConversationPanel.tsx # Transcript display
+│   │   ├── HeaderBar.tsx       # Status header
+│   │   ├── QuickStats.tsx       # Packet statistics display
+│   │   └── VoiceCloner.tsx     # Voice reference upload interface
+│   ├── hooks/
+│   │   ├── useJanusSocket.ts   # Main socket hook (mode conversion)
+│   │   └── useJanusWebSocket.ts # WebSocket connection management
+│   └── types/
+│       └── janus.ts            # TypeScript type definitions
+│
+├── requirements.txt            # Python dependencies
+├── package.json                # Node.js dependencies
+├── README.md                   # Project overview
+├── SETUP.md                    # Setup instructions
+├── API.md                      # API documentation
+├── TESTING.md                  # Testing guidelines
+├── STYLE.md                    # Coding standards
+└── projectdocs.md              # This file
+```
+
+**Note:** The `/telemetry` page is planned for future implementation to provide real-time bandwidth visualization and packet logging.
+
+---
+
+## Technology Stack
+
+| **Category**           | **Technology**            | **Purpose**                                             | **Rationale**                                                                                 |
 | ---------------------- | ------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| **Frontend Framework** | **React (via Next.js)**   | The "Smart Interface" (Dashboard, Buttons, Visualizer). | Strong conventions (App Router) help Cursor/Antigravity generate code with fewer errors. |
-| **Styling**            | **Tailwind CSS**          | Styling the UI (Dark mode, critical alerts).            | Rapid prototyping without writing custom CSS files.                                      |
-| **Visualization**      | **Recharts**              | Rendering the real-time "Bandwidth vs Cost" graph.      | Simple, composable React chart library.                                                  |
-| **Backend API**        | **FastAPI**               | Connecting React to the Python core via WebSockets.     | Async support is critical for real-time streaming updates.                               |
-| **Speech-to-Text**     | **faster-whisper**        | The "Ear" (Converts speech to text locally).            | Optimized version of Whisper; runs fast on CPU (good on laptops).                        |
-| **Voice Detection**    | **silero-vad**            | The "Gatekeeper" (Detects speech vs silence).           | Extremely lightweight and low-latency compared to WebRTC VAD.                            |
-| **Prosody Analysis**   | **aubio**                 | Extracting Pitch (F0) and Energy.                       | Real-time C-library optimized for audio feature extraction.                              |
-| **Generative TTS**     | **Fish Audio SDK**        | The "Throat" (Reconstructs voice from text + metadata). | The core novelty; handles the "Hallucination" of the voice.                              |
-| **Audio I/O**          | **PyAudio**               | Capturing raw mic data & playing output audio.          | Lower latency and more reliable than browser-based audio for Python processing.          |
-| **Protocol**           | **MessagePack**           | Serializing the data payload (The "Packet").       | Binary format that is significantly smaller and faster than JSON.                        |
-| **Network Logic**      | **Python `socket`**       | Simulating the 300bps connection.                       | Native library allows manual control of the "Sleep" throttle.                            |
-| **Communication**      | **Socket.io** (or raw WS) | Sending status updates from Python to React.            | Low latency communication to update the UI charts in real-time.                          |
+| **Frontend Framework** | **React (via Next.js 14)** | User interface (Dashboard, Controls, Transcript Display) | Strong conventions (App Router) enable rapid development with consistent patterns. |
+| **Styling**            | **Tailwind CSS**          | UI styling (Dark mode, responsive design)            | Rapid prototyping without writing custom CSS files.                                      |
+| **Visualization**      | **Recharts**              | Real-time data visualization (planned for telemetry)      | Simple, composable React chart library.                                                  |
+| **Backend API**        | **FastAPI**               | REST and WebSocket server                              | Async support is critical for real-time streaming updates.                               |
+| **Speech-to-Text**     | **faster-whisper**        | Local speech transcription (Int8 quantized)            | Optimized version of Whisper; runs efficiently on CPU without GPU requirements.                        |
+| **Voice Detection**    | **silero-vad**            | Voice activity detection (gatekeeper)                   | Extremely lightweight and low-latency compared to WebRTC VAD.                            |
+| **Prosody Analysis**   | **aubio**                 | Pitch (F0) and energy extraction                        | Real-time C-library optimized for audio feature extraction.                              |
+| **Generative TTS**     | **Fish Audio SDK**        | Voice synthesis from text + metadata                    | Enables voice reconstruction from semantic data.                              |
+| **Audio I/O**          | **PyAudio**               | Microphone capture and speaker playback                 | Lower latency and more reliable than browser-based audio for Python processing.          |
+| **Protocol**           | **MessagePack**           | Binary serialization of Janus packets                   | Significantly smaller and faster than JSON for bandwidth-constrained transmission.                        |
+| **Network Logic**      | **Python `socket`**       | TCP/UDP socket communication with throttling            | Native library allows manual control of transmission rate for simulation.                            |
+| **Communication**      | **WebSockets**            | Real-time bidirectional communication (FastAPI)          | Low latency communication to update the UI in real-time.                          |
 
 ---
 
-### **Phase 1: Foundation & Environment**
+## Unified Backend Architecture
 
-- **Initialize Repository:** Set up the shared Git repository with the structure defined in the Repo Map.
-- **Environment Configuration:** Create a Python virtual environment (`venv`) and install core dependencies: `faster-whisper`, `pyaudio`, `aubio`, `fish-audio-sdk`, `msgpack`, `silero-vad`, and a UI library.
-- **API Credentialing:** Secure Fish Audio API keys and verify credit balance.
-- **Reference Audio Recording:** Record a clean 10-second audio sample of a team member's voice for cloning.
+The Janus backend uses a unified architecture centered around `server.py`, which provides a single FastAPI application that manages both audio capture and playback through WebSocket connections.
 
-### **Phase 2: The "Smart Ear" (Input Processing)**
+### Core Components
 
-- **Implement Audio Capture Loop:** Create a script using `PyAudio` to continuously read microphone input.
-- **Implement "Hybrid Trigger" Logic:** Refine the capture loop to accept two state flags:
-  - `is_streaming` (Toggle): If True, pass audio to VAD. If VAD detects speech, process it.
-  - `is_recording` (Hold): If True, bypass VAD and buffer _all_ audio until the flag becomes False, then process immediately.
-- **Build Local Transcription:** Implement `faster-whisper` (int8 quantization) to process the chunks triggered by the logic above.
-- **Develop Prosody Extraction:** Create the `aubio` module to extract Pitch and Energy.
+**Server (`server.py`):**
+- FastAPI application with lifespan management
+- Initializes shared `AudioService` for full-duplex audio
+- Launches `smart_ear_loop` as async background task
+- Starts `receiver_loop` in separate thread
+- Manages graceful shutdown
 
-### **Phase 3: The "Protocol" (Transport Layer)**
+**Smart Ear Engine (`services/engine.py`):**
+- Main processing loop (`smart_ear_loop`) that:
+  - Reads control state from `engine_state.control_state`
+  - Captures audio chunks via `AudioService`
+  - Applies VAD filtering when in streaming mode
+  - Transcribes audio using faster-whisper
+  - Extracts prosody metadata using aubio
+  - Serializes and transmits Janus packets via `LinkSimulator`
+  - Pushes transcript and packet events to queues for WebSocket forwarding
 
-- **Define Adaptive Payload:** Design the packet structure to include a "Mode" header:
-  - `Mode 0`: Full Semantic (Text + Prosody Data).
-  - `Mode 1`: Text Only (No Prosody, use default receiver voice).
+**Receiver Loop (`services/engine.py`):**
+- Background thread (`receiver_loop`) that:
+  - Listens for incoming TCP connections
+  - Receives and deserializes Janus packets
+  - Synthesizes audio using Fish Audio SDK
+  - Queues audio bytes for playback worker thread
+  - Plays audio through `AudioService`
 
-  - `Override`: An optional field for "Forced Emotion" (e.g., user selects "Relaxed" manually).
-  - _(Stretch Goal) Mode 2: Morse Code (Text converted to beeps)._
-- **Implement Serialization:** Use `msgpack` to compress the payload.
-- **Build Network Simulation:** Create the TCP/UDP socket with the **"Application-Layer Throttle"** (the sleep function discussed previously) to simulate 300bps.
+**WebSocket Manager (`api/socket_manager.py`):**
+- Handles WebSocket connections at `/ws/janus`
+- Receives `ControlMessage` from frontend and updates `control_state`
+- Forwards `TranscriptMessage` and `PacketSummaryMessage` from engine queues to frontend
+- Manages connection lifecycle and error handling
 
-### **Phase 4: The "Mouthpiece" (Receiver-Side Synthesis)**
+**Engine State (`common/engine_state.py`):**
+- `ControlState`: Shared state object with mode, streaming/recording flags, emotion override
+- `transcript_queue`: Async queue for transcript events
+- `packet_queue`: Async queue for packet summary events
 
-- **Implement Deserialization:** Logic to unpack `msgpack` data.
-- **Integrate Fish Audio SDK:**
-  - **Dynamic Prompting:** If the payload contains "Forced Emotion" (from the UI selector), use that tag. If not, use the extracted Prosody data from `aubio`.
-- **Fallback Logic:**
-  - If `Mode 1` (Text Only) is received, skip the cloning prompt and read raw text using a default system voice or generic Fish Audio model to save API latency/cost.
-  - _(Stretch Goal) If Mode 2 (Morse) is received, bypass Fish Audio and trigger a local sine-wave generator to play the message as beeps._
-- **Audio Playback:** Implement a low-latency player using `PyAudio`.
+### Standalone CLI Tools
 
-### **Phase 5: FastAPI Control Surface (API Layer)**
+The repository also includes `sender_main.py` and `receiver_main.py` as standalone CLI tools for direct network testing without the web interface. These tools are useful for:
+- Testing network connectivity between machines
+- Verifying packet transmission and reception
+- Debugging network configuration issues
+- Manual integration testing
 
-- **Set Up API Skeleton:** Create the FastAPI structure in backend:
-  `appy` registers routes,
-  `endpoints.py` provides `/api/health`,
-  `types.py` defines enums + message models,
-  `engine_state.py` holds shared flags + queues,
-  `socket_manager.py` implements WebSocket handling.
-- **Define Message Schema:** Create the three message types:
-  - **ControlMessage** (UI → backend)
-  - **TranscriptMessage** (backend → UI)
-  - **PacketSummaryMessage** (backend → UI)
-  Include enums:
-  - `JanusMode` (semantic / text-only / morse)
-  - `EmotionOverride` (auto / relaxed / panicked)
-- **Shared State & Queues:**
-  In `engine_state.py`, implement:
-  - `control_state` — current flags (`mode`, `is_streaming`, `is_recording`, `emotion_override`)
-  - `transcript_queue` — engine pushes STT results
-  - `packet_queue` — engine pushes packet summaries
-- **WebSocket Glue:**
-  In `socket_manager.py`:
-  - **Receive loop:** read ControlMessages and update `control_state`
-  - **Send loop:** forward transcript + packet events from queues to the frontend
-  Frontend connects at: `ws://localhost:8000/ws`.
-- **Engine Integration Points:**
-  The audio engine:
-  - **Reads** state from `control_state`
-  - **Pushes** events into `transcript_queue` and `packet_queue`
+These tools operate independently of the unified backend and do not use WebSocket communication.
 
-### **Phase 6: The "Janus" Interface (UI/UX)**
+---
 
-- **Build the "Smart Button":** Implement a UI button with dual-event handling:
-  - _Event A (Mouse Down):_ Sets `is_recording = True`.
-  - _Event B (Mouse Up):_ Sets `is_recording = False` (triggers send).
-  - _Event C (Short Click/Tap):_ Toggles `is_streaming = True/False`.
-  - _Visual Feedback:_ Button turns **Red** when holding, **Green** when toggled to stream.
-- **Implement Mode Selector:** Add a dropdown or radio button set for:
-  - _Standard (Semantic Voice)_
-  - _Text Only (Bandwidth Saver)_
-  - _Emotion Overrides:_ [Auto, Forced Relaxed, Forced Panicked]
-  - _(Stretch Goal) Morse Code (Emergency)_
-- **Develop Bandwidth Visualizer:** Create the live comparison (telemetry) chart (Standard VoIP Cost vs. Janus Cost) that updates every time a packet is sent.
+## Data Flow
 
-### **Phase 7: Integration & Tuning**
+### Input Pipeline (Sender Side)
 
-- **End-to-End Testing:** Verify that "Holding" the button captures a long sentence and sends it as one block, while "Toggling" successfully sends sentence-by-sentence based on VAD.
-- **Latency Tuning:** Adjust the VAD silence threshold for the "Streaming" mode to ensure it feels natural.
-- **Narrative Polish:** Finalize the demo script.
-  - _Scene 1:_ "Streaming Mode" for general chatter.
-  - _Scene 2:_ "Hold Mode" for a critical, long report.
-  - _Scene 3:_ "Mode Switch" to Text-Only to show adaptability.
-  - _(Stretch Goal) Scene 4: "Emergency" - Switch to Morse code if time permits implementation._
+1. **Audio Capture**: `AudioService` continuously reads microphone input chunks
+2. **VAD Filtering**: When `is_streaming=True`, audio passes through VAD to detect speech segments
+3. **Recording Mode**: When `is_recording=True`, all audio is buffered until flag is cleared
+4. **Transcription**: Audio chunks are transcribed to text using faster-whisper
+5. **Prosody Extraction**: Pitch (F0) and energy are extracted using aubio
+6. **Packet Creation**: `JanusPacket` is created with text, mode, prosody, and emotion override
+7. **Serialization**: Packet is serialized using MessagePack
+8. **Transmission**: Serialized packet is sent via `LinkSimulator` (with throttling for simulation)
+
+### Output Pipeline (Receiver Side)
+
+1. **Network Reception**: `receiver_loop` receives TCP connection and reads packet data
+2. **Deserialization**: MessagePack data is deserialized into `JanusPacket`
+3. **Synthesis**: Fish Audio SDK synthesizes audio from text + prosody metadata
+4. **Playback Queue**: Audio bytes are queued for playback worker
+5. **Audio Output**: `AudioService` writes audio chunks to speaker
+
+### WebSocket Communication
+
+- **Frontend → Backend**: `ControlMessage` updates control state (mode, flags, emotion override)
+- **Backend → Frontend**: `TranscriptMessage` (text + prosody) and `PacketSummaryMessage` (packet size, mode, timestamp)
+
+---
+
+## Transmission Modes
+
+Janus supports three transmission modes (defined in `JanusMode` enum):
+
+1. **SEMANTIC_VOICE (Mode 0)**: Full semantic transmission
+   - Includes text + prosody data (pitch, energy)
+   - Enables full voice reconstruction with emotional context
+   - Higher bandwidth requirement but preserves voice characteristics
+
+2. **TEXT_ONLY (Mode 1)**: Text-only transmission
+   - Includes only transcribed text
+   - Uses default receiver voice (no prosody)
+   - Minimal bandwidth requirement
+   - Suitable for bandwidth-constrained scenarios
+
+3. **MORSE_CODE (Mode 2)**: Morse code transmission
+   - Planned feature for emergency communication
+   - Converts text to Morse code beeps
+   - Bypasses TTS synthesis entirely
+
+---
+
+## Design Decisions
+
+### Unified Backend vs. Separate Sender/Receiver
+
+The unified backend architecture (`server.py`) was chosen to:
+- Simplify deployment (single process)
+- Enable full-duplex communication (simultaneous capture and playback)
+- Provide real-time WebSocket updates to frontend
+- Centralize state management
+
+The standalone CLI tools (`sender_main.py`, `receiver_main.py`) are retained for:
+- Network testing and debugging
+- Scenarios requiring separate sender/receiver processes
+- Integration testing without web interface
+
+### MessagePack Serialization
+
+MessagePack was chosen over JSON for packet serialization because:
+- Significantly smaller payload size (critical for 300bps simulation)
+- Faster serialization/deserialization
+- Binary format reduces parsing overhead
+- Maintains compatibility with text-based metadata
+
+### CPU-Only PyTorch
+
+The system defaults to CPU-only PyTorch installation to:
+- Support wider hardware compatibility (no GPU required)
+- Reduce installation size (avoids 2.5GB CUDA packages)
+- Enable operation on standard laptops and development machines
+
+### Int8 Quantization for faster-whisper
+
+Int8 quantization is used for faster-whisper to:
+- Reduce memory footprint
+- Improve inference speed on CPU
+- Maintain acceptable transcription accuracy
+- Enable real-time processing on consumer hardware
