@@ -6,6 +6,8 @@ Janus is a real-time semantic audio codec system designed to optimize bandwidth 
 
 This approach enables high-quality voice communication over extremely constrained network connections (as low as 300bps), then reconstructed into natural-sounding speech using modern generative TTS models.
 
+---
+
 ## Impact
 
 Janus achieves significant efficiency gains through semantic compression:
@@ -18,23 +20,19 @@ Janus achieves significant efficiency gains through semantic compression:
 
 ### Cost Savings
 
-Janus achieves a 158x cost reduction for critical satellite communication:
-
-**Pricing Comparison:**
+**Pricing Comparison:** Janus achieves a 158x cost reduction for critical satellite communication
 - **Standard Satellite Voice** (Iridium Land): ~$0.89 per minute
 - **Janus Semantic Voice** (Iridium Certus Data): ~$0.0056 per event
 
-**Operational Impact:**
-For industrial users operating remote fleets, this transforms voice communication economics:
+**Operational Impact:** For industrial users operating remote fleets, this nearly eliminates vocal communication expenses
 - **Standard Voice OPEX**: $13,350/month for a single fleet
 - **Semantic Voice OPEX**: $84/month for the same fleet
-- **Savings**: Voice communication shifts from a major operational expense to negligible cost
 
 ### Applications
 
 **Public Safety and Disaster Relief**
 - Reliable communication when infrastructure fails during mass casualty events (Maui wildfires, Hurricane Helene)
-- Cognitive Firewall: Crystal-clear synthesized instructions reduce cognitive load on first responders
+- Crystal-clear synthesized audio reduces cognitive load on first responders
 
 **Global South and Rural Connectivity**
 - Voice over ultra-low-power networks (LoRaWAN, LPWAN) where high-bandwidth is unviable
@@ -52,26 +50,9 @@ For industrial users operating remote fleets, this transforms voice communicatio
 - Voice commands on battery-powered devices and sensor networks
 - Complies with strict regulatory duty cycle limits (1% Europe) impossible for continuous voice
 
----
-
-For technical details and architecture, see [ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
-## Quick Start
-
-1. **Setup**: Follow the instructions in [SETUP.md](SETUP.md) to install dependencies and configure the environment
-2. **Run Backend**: Start the FastAPI server with `uvicorn backend.server:app --reload`
-3. **Run Frontend**: Start the Next.js development server with `cd frontend && npm run dev`
-4. **Access**: Open `http://localhost:3000` in your browser
-
-For detailed setup instructions, see [SETUP.md](SETUP.md).
-
-## Project Structure
-
-See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed project structure and component descriptions.
-
 ## Documentation
 
-- **[SETUP.md](SETUP.md)**: Environment setup and installation
+- **[SETUP.md](SETUP.md)**: Environment setup, installation, and start instructions
 - **[ARCHITECTURE.md](docs/ARCHITECTURE.md)**: Architecture, tech stack, and design decisions
 - **[API.md](docs/API.md)**: WebSocket and REST API reference
 - **[TESTING.md](docs/TESTING.md)**: Testing guidelines
