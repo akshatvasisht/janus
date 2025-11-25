@@ -28,7 +28,6 @@ Janus achieves a 158x cost reduction for critical satellite communication:
 For industrial users operating remote fleets, this transforms voice communication economics:
 - **Standard Voice OPEX**: $13,350/month for a single fleet
 - **Semantic Voice OPEX**: $84/month for the same fleet
-- **Savings**: Voice communication shifts from a major operational expense to negligible cost
 
 ### Applications
 
