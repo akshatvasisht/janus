@@ -3,16 +3,16 @@ import './globals.css';
 import { Providers } from '../providers/providers';
 
 export const metadata: Metadata = {
-  title: 'MadHacks',
+  title: 'Janus',
   description: 'AI-powered audio processing platform',
 };
 
 /**
  * Root layout component for the Next.js application.
- * 
+ *
  * Wraps all pages with global providers (React Query) and applies global styles.
  * Provides the HTML structure and body styling for the entire application.
- * 
+ *
  * @param props - Component props.
  * @param props.children - React node containing page content to render.
  */
