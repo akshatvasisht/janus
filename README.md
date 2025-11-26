@@ -22,6 +22,8 @@ Janus is inspired by SemantiCodec (Zhang et al., 2024), a state-of-the-art seman
 4. Voice Reconstruction Layer (Fishaudio TTS)
    Generates natural speech using the sender’s message and extracted prosody.
 
+<img width="1897" height="216" alt="image" src="https://github.com/user-attachments/assets/db7cb35e-ae87-4fb7-b0a0-35903f7572a8" />
+
 ---
 
 ## Impact
