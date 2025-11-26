@@ -16,6 +16,7 @@ export const queryKeys = {
   transcripts: ['janus', 'transcripts'] as const,
   lastPacket: ['janus', 'lastPacket'] as const,
   connectionStatus: ['janus', 'connectionStatus'] as const,
+  packetHistory: ['janus', 'packetHistory'] as const,
 };
 
 /**
@@ -57,6 +58,13 @@ export function useJanusWebSocket() {
     },
     initialData: null,
     enabled: false, // Don't auto-fetch, we manage via WebSocket
+  });
+
+  const { data: packetHistory = [] } = useQuery<PacketSummaryMessage[]>({
+    queryKey: queryKeys.packetHistory,
+    queryFn: async () => [],
+    initialData: [],
+    enabled: false,
   });
 
   // Mutation for sending control messages
@@ -118,6 +126,15 @@ export function useJanusWebSocket() {
             queryKeys.lastPacket,
             data
           );
+          // Append to packet history (keep a reasonable cap)
+          queryClient.setQueryData<PacketSummaryMessage[]>(
+            queryKeys.packetHistory,
+            (old = []) => {
+              const next = [...old, data];
+              // cap to last 200 entries to avoid unbounded growth
+              return next.slice(-200);
+            }
+          );
         }
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
@@ -176,6 +193,7 @@ export function useJanusWebSocket() {
     connectionStatus,
     transcripts,
     lastPacket,
+    packetHistory,
     sendControl: sendControlMutation.mutate,
     isConnected: connectionStatus === 'connected',
     reconnect: connect,
