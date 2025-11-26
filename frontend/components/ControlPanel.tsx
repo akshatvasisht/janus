@@ -65,7 +65,7 @@ export default function ControlPanel({
           <ModeToggle
             mode={mode}
             onChange={(m) => onUpdateControl({ mode: m })}
-            isMorseEnabled={false} // Disabled as per spec (stretch goal)
+            isMorseEnabled
           />
         </CardContent>
       </Card>
