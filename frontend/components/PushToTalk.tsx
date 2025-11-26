@@ -59,7 +59,7 @@ export default function PushToTalk({
   }, [disabled, debouncedHoldStart, debouncedHoldEnd, onToggleStreaming]);
 
   return (
-    <div className="flex flex-col items-center w-full">
+    <div className="flex flex-col items-center justify-center w-full">
       <Button
         size="lg"
         className={`w-48 h-48 transition-all border-4 border-black rounded-none ${
