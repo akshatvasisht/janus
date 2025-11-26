@@ -11,13 +11,12 @@ export default function DashboardPage() {
     status,
     lastError,
     mode,
-    emotionOverride,
-    isRecording,
-    isStreaming,
-    transcripts,
-    lastPacketSummary,
-    sendControl,
-  } = useJanusSocket();
+  emotionOverride,
+  isRecording,
+  isStreaming,
+  transcripts,
+  sendControl,
+} = useJanusSocket();
 
   return (
     <div className="relative min-h-screen bg-background text-foreground">
@@ -42,7 +41,6 @@ export default function DashboardPage() {
                   isStreaming={isStreaming}
                   mode={mode}
                   emotionOverride={emotionOverride}
-                  lastPacketSummary={lastPacketSummary}
                   onUpdateControl={sendControl}
                 />
 

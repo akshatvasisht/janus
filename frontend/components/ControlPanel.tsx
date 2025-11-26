@@ -18,7 +18,6 @@ type ControlPanelProps = {
   isStreaming: boolean;
   mode: JanusMode;
   emotionOverride: EmotionOverride;
-  lastPacketSummary?: PacketSummaryMessage;
   onUpdateControl: (partial: {
     isRecording?: boolean;
     isStreaming?: boolean;
@@ -33,7 +32,6 @@ export default function ControlPanel({
   isStreaming,
   mode,
   emotionOverride,
-  lastPacketSummary,
   onUpdateControl,
 }: ControlPanelProps) {
   const isConnected = status === 'connected';
@@ -93,8 +91,6 @@ export default function ControlPanel({
         </CardContent>
       </Card>
 
-      {/* Stats */}
-      <QuickStats summary={lastPacketSummary} />
     </div>
   );
 }
