@@ -12,9 +12,9 @@ export default function EmotionSelector({
   onChange,
 }: EmotionSelectorProps) {
   const options: { value: EmotionOverride; label: string }[] = [
-    { value: 'auto', label: 'Neutral' },
-    { value: 'calm', label: 'Happy' },
-    { value: 'urgent', label: 'Urgent' },
+    { value: 'auto', label: 'Auto' },
+    { value: 'relaxed', label: 'Relaxed' },
+    { value: 'panicked', label: 'Panicked' },
   ];
 
   return (
