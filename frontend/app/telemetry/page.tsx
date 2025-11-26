@@ -33,7 +33,9 @@ export default function TelemetryPage() {
       <main className="container mx-auto px-6 py-8 space-y-6">
         <HeaderBar
           status={connectionStatus}
-          lastError={connectionStatus === 'disconnected' ? 'Connection lost' : undefined}
+          lastError={
+            connectionStatus === 'disconnected' ? 'Connection lost' : undefined
+          }
           links={[{ href: '/', label: 'Dashboard' }]}
         />
 
@@ -41,9 +43,7 @@ export default function TelemetryPage() {
           <Card className="xl:col-span-2">
             <CardHeader>
               <CardTitle>Bandwidth</CardTitle>
-              <CardDescription>
-                Packets over time (live from backend)
-              </CardDescription>
+              <CardDescription>Packets over time</CardDescription>
             </CardHeader>
             <CardContent className="p-4">
               <TelemetryGraph packets={packetHistory} />
@@ -53,7 +53,6 @@ export default function TelemetryPage() {
           <Card>
             <CardHeader>
               <CardTitle>Summary</CardTitle>
-              <CardDescription>Rolling metrics</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
