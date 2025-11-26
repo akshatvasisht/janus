@@ -40,7 +40,7 @@ export default function ControlPanel({
     <div className="space-y-6">
       {/* PTT Button Card */}
       <Card>
-        <CardContent className="pt-6 flex flex-col items-center justify-center">
+        <CardContent className="min-h-[240px] flex items-center justify-center">
           <PushToTalk
             isRecording={isRecording}
             isStreaming={isStreaming}
