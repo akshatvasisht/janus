@@ -2,9 +2,25 @@
 
 Submission for MadHacks 2025
 
+## Overview
+
 Janus is a real-time semantic audio codec system designed to optimize bandwidth by transmitting semantic meaning rather than raw audio waveforms. Instead of sending compressed audio data, Janus converts speech to text, extracts prosodic metadata (pitch and energy), and reconstructs the voice on the receiver side using generative text-to-speech synthesis.
 
 This approach enables high-quality voice communication over extremely constrained network connections (as low as 300bps), then reconstructed into natural-sounding speech using modern generative TTS models.
+
+### Research Inspiration
+
+Janus is inspired by SemantiCodec (Zhang et al., 2024), a state-of-the-art semantic codec that demonstrated the viability of sub-kbps speech transmission by encoding meaning and prosody instead of waveforms. Janus extends this paradigm into a real-time system by leveraging Faster-Whisper for speech-to-text, Silero VAD for precise speech gating, Aubio for pitch/energy extraction, MessagePack for ultra-compact serialization, and FishAudio’s generative TTS in an end-to-end STT → semantic-packet → TTS codec pipeline.
+
+### How Janus Works
+1. STT Layer (Faster-Whisper)
+   Extracts text and timestamps from live speech.
+2. Prosody Layer (Aubio)
+   Capture pitch and energy to preserve tone
+3. Compression Layer (MessagePack)
+   Packages text + prosody into ~300 bps payloads
+4. Voice Reconstruction Layer (Fishaudio TTS)
+   Generates natural speech using the sender’s message and extracted prosody.
 
 ---
 
