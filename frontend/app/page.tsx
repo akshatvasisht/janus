@@ -33,9 +33,9 @@ export default function DashboardPage() {
             />
 
             {/* Main Content Grid */}
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-0">
               {/* Left Column: Controls */}
-              <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-6 lg:col-span-1">
                 <ControlPanel
                   status={status}
                   isRecording={isRecording}
@@ -53,7 +53,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Right Column: Conversation */}
-              <div className="h-full min-h-[500px]">
+              <div className="h-full min-h-[500px] lg:col-span-3">
                 <ConversationPanel transcripts={transcripts} />
               </div>
             </div>

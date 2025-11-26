@@ -96,11 +96,15 @@ export function useJanusWebSocket() {
         const data = JSON.parse(event.data);
 
         if (data.type === 'transcript') {
+          const timestamp =
+            data.end_ms ??
+            data.start_ms ??
+            Date.now();
           // Add frontend-only fields
           const transcript: TranscriptMessage = {
             ...data,
             id: `transcript-${Date.now()}-${Math.random()}`,
-            timestamp: data.created_at_ms || Date.now(),
+            timestamp,
           };
 
           // Update transcripts query cache (prepend new transcript)
