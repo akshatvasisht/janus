@@ -1,43 +1,100 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { useJanusSocket } from '@/hooks/useJanusSocket';
+
+import React, { useMemo } from 'react';
 import TelemetryGraph from '@/components/TelemetryGraph';
 import NetworkLog from '@/components/NetworkLog';
+import { useJanusWebSocket } from '@/hooks/useJanusWebSocket';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
 import HeaderBar from '@/components/HeaderBar';
-import { PacketSummaryMessage } from '@/types/janus';
 
 export default function TelemetryPage() {
-  const { lastPacketSummary, status, lastError } = useJanusSocket();
-  const [packets, setPackets] = useState<PacketSummaryMessage[]>([]);
+  const { packetHistory, connectionStatus, lastPacket } = useJanusWebSocket();
 
-  useEffect(() => {
-    if (lastPacketSummary) {
-      setPackets((prev) => {
-        // Avoid duplicates based on timestamp if needed, but assuming stream is unique
-        return [...prev, lastPacketSummary].slice(-50); // Keep last 50
-      });
-    }
-  }, [lastPacketSummary]);
+  const { totalBytes, totalPackets } = useMemo(() => {
+    const counts = packetHistory.reduce(
+      (acc, pkt) => {
+        acc.totalBytes += pkt.bytes;
+        acc.totalPackets += 1;
+        return acc;
+      },
+      { totalBytes: 0, totalPackets: 0 }
+    );
+    return counts;
+  }, [packetHistory]);
 
   return (
-    <div className="relative min-h-screen bg-background text-foreground">
-      <div className="relative z-10">
-        <main className="min-h-screen font-sans">
-          <div className="container mx-auto px-6 py-8 space-y-6 flex flex-col">
-            <HeaderBar
-              status={status}
-              lastError={lastError}
-              links={[{ href: '/', label: 'Dashboard' }]}
-            />
-            <div className="max-w-4xl mx-auto w-full space-y-8">
-              <div className="grid gap-6">
-                <TelemetryGraph packets={packets} />
-                <NetworkLog packets={packets} />
+    <div className="min-h-screen bg-background text-foreground">
+      <main className="container mx-auto px-6 py-8 space-y-6">
+        <HeaderBar
+          status={connectionStatus}
+          lastError={
+            connectionStatus === 'disconnected' ? 'Connection lost' : undefined
+          }
+          links={[{ href: '/', label: 'Dashboard' }]}
+        />
+
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <Card className="xl:col-span-2">
+            <CardHeader>
+              <CardTitle>Bandwidth</CardTitle>
+              <CardDescription>Packets over time</CardDescription>
+            </CardHeader>
+            <CardContent className="p-4">
+              <TelemetryGraph packets={packetHistory} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Summary</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground text-sm">
+                  Total packets
+                </span>
+                <span className="font-mono text-lg">{totalPackets}</span>
               </div>
-            </div>
-          </div>
-        </main>
-      </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground text-sm">
+                  Total bytes
+                </span>
+                <span className="font-mono text-lg">{totalBytes}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground text-sm">
+                  Last packet
+                </span>
+                <span className="font-mono text-lg">
+                  {lastPacket ? `${lastPacket.bytes} B` : '—'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground text-sm">Mode</span>
+                <span className="font-semibold uppercase">
+                  {lastPacket ? lastPacket.mode : '—'}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Packet Log</CardTitle>
+            <CardDescription>Newest first</CardDescription>
+          </CardHeader>
+          <CardContent className="p-4">
+            <NetworkLog packets={packetHistory} />
+          </CardContent>
+        </Card>
+      </main>
     </div>
   );
 }

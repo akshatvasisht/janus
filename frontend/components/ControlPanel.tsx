@@ -18,7 +18,6 @@ type ControlPanelProps = {
   isStreaming: boolean;
   mode: JanusMode;
   emotionOverride: EmotionOverride;
-  lastPacketSummary?: PacketSummaryMessage;
   onUpdateControl: (partial: {
     isRecording?: boolean;
     isStreaming?: boolean;
@@ -33,7 +32,6 @@ export default function ControlPanel({
   isStreaming,
   mode,
   emotionOverride,
-  lastPacketSummary,
   onUpdateControl,
 }: ControlPanelProps) {
   const isConnected = status === 'connected';
@@ -42,7 +40,7 @@ export default function ControlPanel({
     <div className="space-y-6">
       {/* PTT Button Card */}
       <Card>
-        <CardContent className="pt-6 flex flex-col items-center justify-center">
+        <CardContent className="min-h-[240px] flex items-center justify-center">
           <PushToTalk
             isRecording={isRecording}
             isStreaming={isStreaming}
@@ -93,8 +91,6 @@ export default function ControlPanel({
         </CardContent>
       </Card>
 
-      {/* Stats */}
-      <QuickStats summary={lastPacketSummary} />
     </div>
   );
 }
