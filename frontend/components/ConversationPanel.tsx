@@ -1,113 +1,109 @@
+import React from 'react';
 import { TranscriptMessage } from '../types/janus';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 type ConversationPanelProps = {
   transcripts: TranscriptMessage[];
 };
 
-/**
- * Conversation panel component displaying transcript history and latest utterance.
- * 
- * Shows the most recent transcript message prominently with metadata badges,
- * and provides a scrollable history list of all received transcripts.
- * 
- * @param props - Component props.
- * @param props.transcripts - Array of transcript messages to display, ordered most recent first.
- */
-export default function ConversationPanel({ transcripts }: ConversationPanelProps) {
+export default function ConversationPanel({
+  transcripts,
+}: ConversationPanelProps) {
   const lastMessage = transcripts[0];
+  const secondLastMessage = transcripts[1];
 
-  return (
-    <div className="flex flex-col h-full gap-6">
-      {/* Latest Message Card */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl relative overflow-hidden group">
-        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-           <svg className="w-24 h-24 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
-               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-           </svg>
-        </div>
-        
-        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
-            Now Speaking / Last Utterance
-        </h2>
-        
-        {lastMessage ? (
-          <div className="space-y-4 relative z-10">
-            <p className="text-lg md:text-2xl font-light text-slate-50 leading-relaxed">
-              "{lastMessage.text}"
-            </p>
-            
-            <div className="flex flex-wrap gap-2">
-              <Badge label={new Date(lastMessage.timestamp || Date.now()).toLocaleTimeString()} color="slate" />
-              {lastMessage.avg_pitch_hz && (
-                <Badge label={`Pitch: ${lastMessage.avg_pitch_hz.toFixed(0)}Hz`} color="blue" />
-              )}
-              {lastMessage.avg_energy && (
-                <Badge label={`Energy: ${lastMessage.avg_energy.toFixed(2)}`} color="cyan" />
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="h-24 flex items-center justify-center text-slate-500 italic">
-            No voice data received yet. Press PTT to speak.
-          </div>
-        )}
-      </div>
-
-      {/* History List */}
-      <div className="flex-1 flex flex-col min-h-0 bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden">
-         <div className="p-4 border-b border-slate-800 bg-slate-900/80">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Transcript History</h3>
-         </div>
-         
-         <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
-            {transcripts.length > 0 ? (
-                transcripts.map((msg) => (
-                    <div key={msg.id} className="flex gap-4 p-3 rounded-lg hover:bg-slate-800/50 transition-colors border border-transparent hover:border-slate-800">
-                        <div className="flex-shrink-0 w-16 pt-1">
-                            <div className="text-[10px] text-slate-500 font-mono">
-                                {new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second:'2-digit' })}
-                            </div>
-                        </div>
-                        <div className="flex-1 space-y-1">
-                            <div className="text-sm text-slate-300">{msg.text}</div>
-                            <div className="flex gap-2">
-                                {msg.avg_pitch_hz && (
-                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-500 border border-slate-700">
-                                        Pitch: {msg.avg_pitch_hz.toFixed(0)}Hz
-                                    </span>
-                                )}
-                                {msg.avg_energy && (
-                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-500 border border-slate-700">
-                                        Energy: {msg.avg_energy.toFixed(2)}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                ))
-            ) : (
-                <div className="text-center py-8 text-xs text-slate-600">
-                    History is empty.
-                </div>
-            )}
-         </div>
-      </div>
-    </div>
-  );
-}
-
-function Badge({ label, color }: { label: string; color: 'blue' | 'red' | 'slate' | 'cyan' }) {
-  const colors = {
-    blue: 'bg-blue-900/30 text-blue-300 border-blue-800',
-    red: 'bg-red-900/30 text-red-300 border-red-800',
-    slate: 'bg-slate-800 text-slate-400 border-slate-700',
-    cyan: 'bg-cyan-900/30 text-cyan-300 border-cyan-800',
+  const formatTime = (timestamp?: number) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
   };
 
   return (
-    <span className={`text-xs px-2 py-1 rounded-md border font-medium ${colors[color]}`}>
-      {label}
-    </span>
+    <div className="space-y-6 h-full flex flex-col">
+      {/* Now Speaking / Last Utterance Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Now Speaking</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {lastMessage && (
+              <div>
+                <div className="text-xs text-muted-foreground mb-1 uppercase font-bold">
+                  Assistant
+                </div>
+                <div className="text-foreground bg-muted border-2 border-black p-3 font-mono text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                  "{lastMessage.text}"
+                </div>
+              </div>
+            )}
+            {secondLastMessage && (
+              <div>
+                <div className="text-xs text-muted-foreground mb-1 uppercase font-bold">
+                  Last Utterance
+                </div>
+                <div className="text-muted-foreground bg-white border-2 border-black p-3 font-mono text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                  "{secondLastMessage.text}"
+                </div>
+              </div>
+            )}
+            {!lastMessage && (
+              <div className="text-muted-foreground italic text-sm">
+                No voice data received yet. Press PTT to speak.
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Transcript History Card */}
+      <Card className="flex-1 flex flex-col min-h-0">
+        <CardHeader>
+          <CardTitle>Transcript History</CardTitle>
+        </CardHeader>
+        <CardContent className="flex-1 min-h-0">
+          <div className="space-y-3">
+            {transcripts.length > 0 ? (
+              transcripts.map((msg, index) => {
+                // Alternate between assistant (even indices) and user (odd indices)
+                const isAssistant = index % 2 === 0;
+                const timeStr = formatTime(msg.timestamp || Date.now());
+                const timeParts = timeStr.split(':');
+                const displayTime =
+                  timeParts.length === 3
+                    ? `${timeParts[0]}:${timeParts[1]}:${timeParts[2]}`
+                    : timeStr;
+
+                return (
+                  <div key={msg.id || index} className="space-y-1">
+                    <div className="text-xs text-muted-foreground font-mono">
+                      {displayTime} - {isAssistant ? 'ASSISTANT' : 'USER'}
+                    </div>
+                    <div
+                      className={`p-2 border-2 border-black text-sm font-mono shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${
+                        isAssistant
+                          ? 'text-foreground bg-muted'
+                          : 'text-foreground bg-white'
+                      }`}
+                    >
+                      {msg.text}
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-center py-8 text-xs text-muted-foreground">
+                History is empty.
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
-

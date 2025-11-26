@@ -1,5 +1,9 @@
-import React, { useCallback, useEffect } from 'react';
+// TODO: Integrate with real audio capture/playback when backend is ready
+// Currently only handles UI state - no actual microphone access or audio playback
+import React, { useEffect } from 'react';
+import { Mic } from 'lucide-react';
 import { useDebounce } from '../hooks/useDebounce';
+import { Button } from './ui/button';
 
 type PushToTalkProps = {
   isRecording: boolean;
@@ -10,21 +14,6 @@ type PushToTalkProps = {
   onToggleStreaming: () => void;
 };
 
-/**
- * Interaction button for the Janus interface.
- * 
- * Handles both "Hold-to-Record" and "Tap-to-Stream" patterns via separate listeners
- * to avoid event conflict. Supports keyboard shortcuts (Space for hold, S for toggle)
- * and provides visual feedback for recording and streaming states.
- * 
- * @param props - Component props.
- * @param props.isRecording - Whether recording is currently active.
- * @param props.isStreaming - Whether streaming mode is enabled.
- * @param props.disabled - Whether the component is disabled (e.g., disconnected).
- * @param props.onHoldStart - Callback invoked when hold-to-record starts.
- * @param props.onHoldEnd - Callback invoked when hold-to-record ends.
- * @param props.onToggleStreaming - Callback invoked to toggle streaming mode.
- */
 export default function PushToTalk({
   isRecording,
   isStreaming,
@@ -69,34 +58,16 @@ export default function PushToTalk({
     };
   }, [disabled, debouncedHoldStart, debouncedHoldEnd, onToggleStreaming]);
 
-  // Determine visual state
-  let bgClass =
-    'bg-slate-800 border-slate-700 text-slate-100 hover:bg-slate-750';
-  let shadowClass = '';
-  let statusText = 'Hold to Talk';
-
-  if (disabled) {
-    bgClass =
-      'bg-slate-800 opacity-50 cursor-not-allowed border-slate-700 text-slate-500';
-    statusText = 'Disconnected';
-  } else if (isRecording) {
-    bgClass = 'bg-red-600 border-red-500 text-white';
-    shadowClass = 'shadow-[0_0_40px_-10px_rgba(220,38,38,0.5)] scale-[0.98]';
-    statusText = 'Listening...';
-  } else if (isStreaming) {
-    bgClass = 'bg-blue-600 border-blue-500 text-white';
-    shadowClass = 'shadow-[0_0_40px_-10px_rgba(37,99,235,0.5)]';
-    statusText = 'Streaming Live';
-  }
-
   return (
-    <div className="flex flex-col items-center gap-3 w-full">
-      <button
-        className={`
-          relative w-full aspect-square max-w-[240px] rounded-full flex flex-col items-center justify-center
-          border-4 transition-all duration-200 ease-in-out outline-none
-          ${bgClass} ${shadowClass}
-        `}
+    <div className="flex flex-col items-center justify-center w-full">
+      <Button
+        size="lg"
+        className={`w-48 h-48 transition-all border-4 border-black rounded-none ${
+          isRecording
+            ? "bg-red-500 hover:bg-red-600 text-white shadow-none translate-x-[4px] translate-y-[4px]"
+            : "bg-white hover:bg-gray-100 text-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px]"
+        }`}
+        disabled={disabled}
         onMouseDown={!disabled ? debouncedHoldStart : undefined}
         onMouseUp={!disabled ? debouncedHoldEnd : undefined}
         onMouseLeave={!disabled && isRecording ? debouncedHoldEnd : undefined}
@@ -116,46 +87,22 @@ export default function PushToTalk({
               }
             : undefined
         }
-        onClick={undefined}
-        disabled={disabled}
       >
-        {/* Inner Ring decoration */}
-        <div
-          className={`absolute inset-2 rounded-full border-2 border-dashed opacity-20 ${
-            isStreaming ? 'animate-spin-slow' : ''
-          }`}
-        />
-
-        <span className="text-3xl font-bold tracking-wider uppercase pointer-events-none select-none">
-          {isRecording ? 'REC' : isStreaming ? 'ON AIR' : 'PTT'}
-        </span>
-        <span className="text-xs font-medium opacity-80 mt-1 pointer-events-none select-none">
-          {statusText}
-        </span>
-      </button>
-
-      <div className="flex flex-col items-center gap-2 text-center">
-        <p className="text-xs text-slate-400 max-w-[200px]">
-          Hold <strong>Space</strong> to talk. Tap button or press{' '}
-          <strong>S</strong> to toggle stream.
-        </p>
-
-        {/* Explicit Toggle Button as an alternative interaction point */}
-        <button
-          onClick={onToggleStreaming}
-          disabled={disabled}
-          className={`
-                text-xs px-3 py-1.5 rounded-full border transition-colors
-                ${
-                  isStreaming
-                    ? 'bg-blue-900/30 border-blue-800 text-blue-200 hover:bg-blue-900/50'
-                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-750 hover:text-slate-200'
-                }
-            `}
-        >
-          {isStreaming ? 'Stop Streaming' : 'Start Streaming'}
-        </button>
-      </div>
+        <div className="flex flex-col items-center gap-2">
+          <Mic
+            className={`w-16 h-16 ${
+              isRecording ? "text-white" : "text-black"
+            }`}
+          />
+          <span
+            className={`text-xs font-bold tracking-widest ${
+              isRecording ? "text-white" : "text-black"
+            }`}
+          >
+            {isRecording ? "TRANSMITTING" : "PUSH TO TALK"}
+          </span>
+        </div>
+      </Button>
     </div>
   );
 }

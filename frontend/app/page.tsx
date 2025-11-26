@@ -6,53 +6,58 @@ import HeaderBar from '../components/HeaderBar';
 import ControlPanel from '../components/ControlPanel';
 import ConversationPanel from '../components/ConversationPanel';
 
-/**
- * Main page component for the Janus application interface.
- * 
- * Provides the primary user interface for push-to-talk interaction, transmission
- * mode selection, and real-time transcript visualization. Manages WebSocket connection
- * state and coordinates between control panel and conversation display components.
- */
-export default function MissionControlPage() {
+export default function DashboardPage() {
   const {
     status,
     lastError,
     mode,
-    emotionOverride,
-    isRecording,
-    isStreaming,
-    transcripts,
-    lastPacketSummary,
-    sendControl,
-  } = useJanusSocket();
+  emotionOverride,
+  isRecording,
+  isStreaming,
+  transcripts,
+  sendControl,
+} = useJanusSocket();
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-50 font-sans selection:bg-blue-500/30">
-      <div className="mx-auto max-w-6xl px-4 py-6 space-y-6 h-screen flex flex-col">
-        {/* Header */}
-        <HeaderBar status={status} lastError={lastError} />
-
-        {/* Main Content Grid */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
-          {/* Left Column: Controls (Fixed width on large screens) */}
-          <div className="lg:col-span-5 xl:col-span-4 flex flex-col gap-6 overflow-y-auto">
-            <ControlPanel
+    <div className="relative min-h-screen bg-background text-foreground">
+      {/* Main content */}
+      <div className="relative z-10">
+        <main className="min-h-screen font-sans">
+          <div className="container mx-auto px-6 py-8 space-y-6 flex flex-col">
+            {/* Header */}
+            <HeaderBar
               status={status}
-              isRecording={isRecording}
-              isStreaming={isStreaming}
-              mode={mode}
-              emotionOverride={emotionOverride}
-              lastPacketSummary={lastPacketSummary}
-              onUpdateControl={sendControl}
+              lastError={lastError}
+              links={[{ href: '/telemetry', label: 'Telemetry' }]}
             />
-          </div>
 
-          {/* Right Column: Conversation (Expands) */}
-          <div className="lg:col-span-7 xl:col-span-8 h-full min-h-[500px]">
-            <ConversationPanel transcripts={transcripts} />
+            {/* Main Content Grid */}
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-0">
+              {/* Left Column: Controls */}
+              <div className="flex flex-col gap-6 lg:col-span-1">
+                <ControlPanel
+                  status={status}
+                  isRecording={isRecording}
+                  isStreaming={isStreaming}
+                  mode={mode}
+                  emotionOverride={emotionOverride}
+                  onUpdateControl={sendControl}
+                />
+
+                {/* TODO: Remove this footer note when real backend integration is complete */}
+                <div className="mt-auto pt-6 text-[10px] text-muted-foreground text-center pb-4">
+                  Janus Project • Dashboard v1.0 • Mock Mode Active
+                </div>
+              </div>
+
+              {/* Right Column: Conversation */}
+              <div className="h-full min-h-[500px] lg:col-span-3">
+                <ConversationPanel transcripts={transcripts} />
+              </div>
+            </div>
           </div>
-        </div>
+        </main>
       </div>
-    </main>
+    </div>
   );
 }

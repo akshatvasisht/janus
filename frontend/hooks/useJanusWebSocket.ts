@@ -9,13 +9,14 @@ import type {
   ConnectionStatus,
 } from '../types/janus';
 
-const WS_URL = 'ws://localhost:8000/ws/janus';
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://127.0.0.1:8000/ws/janus';
 
 // Query keys for React Query
 export const queryKeys = {
   transcripts: ['janus', 'transcripts'] as const,
   lastPacket: ['janus', 'lastPacket'] as const,
   connectionStatus: ['janus', 'connectionStatus'] as const,
+  packetHistory: ['janus', 'packetHistory'] as const,
 };
 
 /**
@@ -59,6 +60,13 @@ export function useJanusWebSocket() {
     enabled: false, // Don't auto-fetch, we manage via WebSocket
   });
 
+  const { data: packetHistory = [] } = useQuery<PacketSummaryMessage[]>({
+    queryKey: queryKeys.packetHistory,
+    queryFn: async () => [],
+    initialData: [],
+    enabled: false,
+  });
+
   // Mutation for sending control messages
   const sendControlMutation = useMutation({
     mutationFn: async (control: Partial<ControlMessage>) => {
@@ -96,11 +104,15 @@ export function useJanusWebSocket() {
         const data = JSON.parse(event.data);
 
         if (data.type === 'transcript') {
+          const timestamp =
+            data.end_ms ??
+            data.start_ms ??
+            Date.now();
           // Add frontend-only fields
           const transcript: TranscriptMessage = {
             ...data,
             id: `transcript-${Date.now()}-${Math.random()}`,
-            timestamp: data.created_at_ms || Date.now(),
+            timestamp,
           };
 
           // Update transcripts query cache (prepend new transcript)
@@ -113,6 +125,15 @@ export function useJanusWebSocket() {
           queryClient.setQueryData<PacketSummaryMessage>(
             queryKeys.lastPacket,
             data
+          );
+          // Append to packet history (keep a reasonable cap)
+          queryClient.setQueryData<PacketSummaryMessage[]>(
+            queryKeys.packetHistory,
+            (old = []) => {
+              const next = [...old, data];
+              // cap to last 200 entries to avoid unbounded growth
+              return next.slice(-200);
+            }
           );
         }
       } catch (error) {
@@ -172,6 +193,7 @@ export function useJanusWebSocket() {
     connectionStatus,
     transcripts,
     lastPacket,
+    packetHistory,
     sendControl: sendControlMutation.mutate,
     isConnected: connectionStatus === 'connected',
     reconnect: connect,

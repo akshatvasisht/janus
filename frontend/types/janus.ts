@@ -22,6 +22,9 @@ export type TranscriptMessage = {
   // Frontend-only fields for UI
   id?: string; // Generate on frontend
   timestamp?: number; // Use created_at_ms or Date.now()
+  mode?: JanusMode;
+  emotionOverride?: EmotionOverride;
+  inferredEmotion?: string;
 };
 
 // Packet summary FROM backend

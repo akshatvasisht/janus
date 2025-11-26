@@ -9,10 +9,10 @@ export const metadata: Metadata = {
 
 /**
  * Root layout component for the Next.js application.
- * 
+ *
  * Wraps all pages with global providers (React Query) and applies global styles.
  * Provides the HTML structure and body styling for the entire application.
- * 
+ *
  * @param props - Component props.
  * @param props.children - React node containing page content to render.
  */

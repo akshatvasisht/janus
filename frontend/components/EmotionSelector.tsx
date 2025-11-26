@@ -1,53 +1,42 @@
 import React from 'react';
 import { EmotionOverride } from '../types/janus';
+import { Button } from './ui/button';
 
 type EmotionSelectorProps = {
   value: EmotionOverride;
   onChange: (v: EmotionOverride) => void;
 };
 
-/**
- * Emotion override selector component.
- * 
- * Provides buttons to select emotion override settings (auto, relaxed, panicked)
- * for voice synthesis. Each option uses distinct color coding for visual feedback.
- * 
- * @param props - Component props.
- * @param props.value - Currently selected emotion override value.
- * @param props.onChange - Callback invoked when selection changes.
- */
-export default function EmotionSelector({ value, onChange }: EmotionSelectorProps) {
-  const options: EmotionOverride[] = ['auto', 'relaxed', 'panicked'];
+export default function EmotionSelector({
+  value,
+  onChange,
+}: EmotionSelectorProps) {
+  const options: { value: EmotionOverride; label: string }[] = [
+    { value: 'auto', label: 'Auto' },
+    { value: 'relaxed', label: 'Relaxed' },
+    { value: 'panicked', label: 'Panicked' },
+  ];
 
   return (
-    <div className="flex gap-2">
+    <div className="grid grid-cols-3 overflow-hidden border-3 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
       {options.map((opt) => {
-        const isActive = value === opt;
-        let activeClass = '';
-        
-        // Distinct colors for emotions
-        if (isActive) {
-            if (opt === 'panicked') activeClass = 'bg-red-900/50 border-red-500 text-red-100';
-            else if (opt === 'relaxed') activeClass = 'bg-cyan-900/50 border-cyan-500 text-cyan-100';
-            else activeClass = 'bg-blue-900/50 border-blue-500 text-blue-100'; // auto
-        } else {
-            activeClass = 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-600';
-        }
-
+        const isActive = value === opt.value;
         return (
-          <button
-            key={opt}
-            onClick={() => onChange(opt)}
-            className={`
-              flex-1 px-3 py-2 rounded-md border text-xs font-medium capitalize transition-all
-              ${activeClass}
-            `}
+          <Button
+            key={opt.value}
+            variant="ghost"
+            className={`rounded-none h-10 border-x border-black/20 first:border-l-0 last:border-r-0 ${
+              isActive
+                ? 'bg-primary text-white font-bold'
+                : 'bg-muted text-foreground font-medium hover:bg-primary/70 hover:text-white'
+            } transition-colors`}
+            onClick={() => onChange(opt.value)}
+            aria-pressed={isActive}
           >
-            {opt}
-          </button>
+            {opt.label}
+          </Button>
         );
       })}
     </div>
   );
 }
-
