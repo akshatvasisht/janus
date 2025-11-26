@@ -1,3 +1,7 @@
+
+
+<img width="1024" height="510" alt="Janus logo final - Copy" src="https://github.com/user-attachments/assets/e9e57755-7e98-4b4b-b75f-d8040d064280" />
+
 # Janus - Real-Time Semantic Audio Codec
 
 Submission for MadHacks 2025
