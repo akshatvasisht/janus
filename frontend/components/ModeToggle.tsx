@@ -30,8 +30,8 @@ export default function ModeToggle({
             className={`rounded-none h-10 border-x border-black/20 first:border-l-0 last:border-r-0 ${
               isActive
                 ? 'bg-primary text-white font-bold'
-                : 'bg-muted text-foreground font-medium hover:bg-white'
-            }`}
+                : 'bg-muted text-foreground font-medium hover:bg-primary/70 hover:text-white'
+            } transition-colors`}
             disabled={opt.disabled}
             onClick={() => onChange(opt.value)}
             title={opt.disabled ? 'Unavailable' : ''}
