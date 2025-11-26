@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 
-const API_URL = 'http://localhost:8000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 const VERIFICATION_PHRASE = 'The quick brown fox jumps over the lazy dog.';
 
 type VoiceClonerProps = {
@@ -248,4 +248,3 @@ export default function VoiceCloner({ disabled = false }: VoiceClonerProps) {
     </>
   );
 }
-

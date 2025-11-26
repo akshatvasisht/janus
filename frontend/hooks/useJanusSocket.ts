@@ -9,37 +9,9 @@ import type {
   PacketSummaryMessage,
   ConnectionStatus,
 } from '../types/janus';
-
-// Helper to convert frontend mode (string) to number for UI compatibility
-const modeToNumber = (mode: JanusMode): 0 | 1 | 2 => {
-  switch (mode) {
-    case 'semantic':
-      return 0;
-    case 'text_only':
-      return 1;
-    case 'morse':
-      return 2;
-    default:
-      return 0;
-  }
-};
-
-const numberToMode = (num: 0 | 1 | 2): JanusMode => {
-  switch (num) {
-    case 0:
-      return 'semantic';
-    case 1:
-      return 'text_only';
-    case 2:
-      return 'morse';
-    default:
-      return 'semantic';
-  }
-};
-
 export type JanusSocketState = {
   status: ConnectionStatus;
-  mode: 0 | 1 | 2; // Keep as number for UI compatibility
+  mode: JanusMode;
   emotionOverride: EmotionOverride;
   isRecording: boolean;
   isStreaming: boolean;
@@ -48,7 +20,7 @@ export type JanusSocketState = {
   lastError?: string | null;
   sendControl: (
     control: Partial<{
-      mode?: 0 | 1 | 2;
+      mode?: JanusMode;
       emotionOverride?: EmotionOverride;
       isRecording?: boolean;
       isStreaming?: boolean;
@@ -56,18 +28,8 @@ export type JanusSocketState = {
   ) => void;
 };
 
-/**
- * Main hook for Janus socket state management and control.
- * 
- * Provides a unified interface for managing WebSocket connection state, transcripts,
- * packet summaries, and control messages. Handles conversion between string-based
- * JanusMode types and numeric mode values for UI compatibility.
- * 
- * @returns JanusSocketState object containing connection status, transcripts,
- *   packet summaries, and control functions.
- */
 export function useJanusSocket(): JanusSocketState {
-  const [mode, setMode] = useState<0 | 1 | 2>(0);
+  const [mode, setMode] = useState<JanusMode>('semantic');
   const [emotionOverride, setEmotionOverride] =
     useState<EmotionOverride>('auto');
   const [isRecording, setIsRecording] = useState(false);
@@ -84,7 +46,7 @@ export function useJanusSocket(): JanusSocketState {
   const sendControl = useCallback(
     (
       partial: Partial<{
-        mode?: 0 | 1 | 2;
+        mode?: JanusMode;
         emotionOverride?: EmotionOverride;
         isRecording?: boolean;
         isStreaming?: boolean;
@@ -102,8 +64,7 @@ export function useJanusSocket(): JanusSocketState {
       // Send to backend via WebSocket
       if (isConnected) {
         sendControlRaw({
-          mode:
-            partial.mode !== undefined ? numberToMode(partial.mode) : undefined,
+          mode: partial.mode,
           emotion_override: partial.emotionOverride,
           is_recording: partial.isRecording,
           is_streaming: partial.isStreaming,

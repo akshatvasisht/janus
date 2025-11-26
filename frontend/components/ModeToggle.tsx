@@ -1,5 +1,7 @@
 import React from 'react';
 import { JanusMode } from '../types/janus';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { Label } from './ui/label';
 
 type ModeToggleProps = {
   mode: JanusMode;
@@ -7,47 +9,61 @@ type ModeToggleProps = {
   isMorseEnabled?: boolean;
 };
 
-/**
- * Mode selection toggle component for Janus transmission modes.
- * 
- * Provides buttons to switch between semantic voice, text-only, and Morse code modes.
- * Supports disabling specific modes (e.g., Morse code) when not available.
- * 
- * @param props - Component props.
- * @param props.mode - Currently selected transmission mode.
- * @param props.onChange - Callback invoked when mode selection changes.
- * @param props.isMorseEnabled - Whether Morse code mode is available. Defaults to true.
- */
-export default function ModeToggle({ mode, onChange, isMorseEnabled = true }: ModeToggleProps) {
-  const options: { value: JanusMode; label: string; disabled?: boolean }[] = [
-    { value: 'semantic', label: 'Semantic' },
-    { value: 'text_only', label: 'Text Only' },
-    { value: 'morse', label: 'Morse', disabled: !isMorseEnabled },
-  ];
+export default function ModeToggle({
+  mode,
+  onChange,
+  isMorseEnabled = true,
+}: ModeToggleProps) {
+  const modeValue =
+    mode === 'text_only' ? 'ptt' : mode === 'morse' ? 'continuous' : 'auto';
 
   return (
-    <div className="flex w-full bg-slate-900 p-1 rounded-lg border border-slate-800">
-      {options.map((opt) => {
-        const isActive = mode === opt.value;
-        return (
-          <button
-            key={opt.value}
-            onClick={() => !opt.disabled && onChange(opt.value)}
-            disabled={opt.disabled}
-            className={`
-              flex-1 py-1.5 text-xs font-medium rounded-md transition-all duration-200
-              ${isActive 
-                ? 'bg-blue-600 text-white shadow-sm' 
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}
-              ${opt.disabled ? 'opacity-40 cursor-not-allowed hover:bg-transparent' : ''}
-            `}
-            title={opt.disabled ? "Mode not available" : ""}
-          >
-            {opt.label}
-          </button>
-        );
-      })}
-    </div>
+    <RadioGroup
+      value={modeValue}
+      onValueChange={(value) => {
+        if (value === 'ptt') {
+          onChange('text_only');
+        } else if (value === 'continuous') {
+          onChange('morse');
+        } else {
+          onChange('semantic');
+        }
+      }}
+    >
+      <div className="flex items-center space-x-2 mb-3">
+        <RadioGroupItem value="auto" id="auto" />
+        <Label
+          htmlFor="auto"
+          className="text-foreground cursor-pointer font-bold"
+        >
+          Automatic (VAD)
+        </Label>
+      </div>
+      <div className="flex items-center space-x-2 mb-3">
+        <RadioGroupItem value="ptt" id="ptt" />
+        <Label
+          htmlFor="ptt"
+          className="text-foreground cursor-pointer font-bold"
+        >
+          Push-to-Talk
+        </Label>
+      </div>
+      <div className="flex items-center space-x-2">
+        <RadioGroupItem
+          value="continuous"
+          id="continuous"
+          disabled={!isMorseEnabled}
+        />
+        <Label
+          htmlFor="continuous"
+          className={`text-foreground font-bold ${
+            !isMorseEnabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+          }`}
+          title={!isMorseEnabled ? 'Stretch goal (not implemented)' : ''}
+        >
+          Continuous Listen
+        </Label>
+      </div>
+    </RadioGroup>
   );
 }
-
