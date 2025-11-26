@@ -3,7 +3,7 @@ import './globals.css';
 import { Providers } from '../providers/providers';
 
 export const metadata: Metadata = {
-  title: 'Janus',
+  title: 'MadHacks',
   description: 'AI-powered audio processing platform',
 };
 

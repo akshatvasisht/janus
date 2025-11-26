@@ -1,6 +1,6 @@
 export type JanusMode = 'semantic' | 'text_only' | 'morse';
 
-export type EmotionOverride = 'auto' | 'relaxed' | 'panicked';
+export type EmotionOverride = 'auto' | 'calm' | 'urgent';
 
 // Control message sent TO backend (matches backend exactly)
 export type ControlMessage = {
@@ -22,6 +22,9 @@ export type TranscriptMessage = {
   // Frontend-only fields for UI
   id?: string; // Generate on frontend
   timestamp?: number; // Use created_at_ms or Date.now()
+  mode?: JanusMode;
+  emotionOverride?: EmotionOverride;
+  inferredEmotion?: string;
 };
 
 // Packet summary FROM backend
@@ -30,6 +33,7 @@ export type PacketSummaryMessage = {
   bytes: number;
   mode: JanusMode;
   created_at_ms: number;
+  estimatedRawBytes?: number;
 };
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';

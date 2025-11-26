@@ -1,53 +1,83 @@
 import React from 'react';
+import Link from 'next/link';
 import { ConnectionStatus } from '../types/janus';
+import { Badge } from './ui/badge';
+import { Wifi, Activity } from 'lucide-react';
+
+type NavigationLink = {
+  href: string;
+  label: string;
+};
 
 type HeaderBarProps = {
   status: ConnectionStatus;
   lastError?: string | null;
+  links?: NavigationLink[];
 };
 
-/**
- * Header bar component displaying application title and connection status.
- * 
- * Shows the Janus application branding and real-time WebSocket connection status
- * with visual indicator. Displays error messages when connection issues occur.
- * 
- * @param props - Component props.
- * @param props.status - Current WebSocket connection status.
- * @param props.lastError - Optional error message to display when disconnected.
- */
-export default function HeaderBar({ status, lastError }: HeaderBarProps) {
-  const statusColor = {
-    connected: 'bg-green-500',
-    connecting: 'bg-amber-500',
-    disconnected: 'bg-red-500',
-  }[status];
-
+export default function HeaderBar({
+  status,
+  lastError,
+  links = [],
+}: HeaderBarProps) {
   const statusText = {
     connected: 'Connected',
     connecting: 'Connecting...',
     disconnected: 'Disconnected',
   }[status];
 
+  const isConnected = status === 'connected';
+
   return (
-    <div className="flex items-center justify-between p-4 bg-slate-900/80 border-b border-slate-800 rounded-t-lg backdrop-blur-sm">
-      <div>
-        <h1 className="text-xl md:text-2xl font-semibold text-slate-50">Janus</h1>
-        <p className="text-xs text-slate-400 tracking-wide uppercase">Semantic Audio Codec</p>
-      </div>
-      
-      <div className="flex flex-col items-end gap-1">
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-950 border border-slate-800">
-          <div className={`w-2 h-2 rounded-full ${statusColor} animate-pulse`} />
-          <span className="text-xs font-medium text-slate-300">{statusText}</span>
+    <header className="border-b-4 border-black bg-white">
+      <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="flex items-start gap-0 flex-col">
+          <h1 className="tracking-wider text-2xl font-black text-black uppercase leading-none">
+            Janus
+          </h1>
+          <h4 className="text-sm font-bold text-muted-foreground uppercase leading-tight">
+            Semantic Audio Codec
+          </h4>
         </div>
-        {lastError && (
-          <span className="text-xs text-red-400 max-w-[200px] truncate" title={lastError}>
-            {lastError}
-          </span>
-        )}
+        <div className="flex items-center gap-4 h-full">
+          {isConnected && (
+            <div className="flex items-center gap-2">
+              <Wifi className="size-4 text-black" />
+              <span className="text-black font-bold text-sm">Connected</span>
+            </div>
+          )}
+          <Badge
+            variant="outline"
+            className={
+              isConnected
+                ? 'border-2 border-black bg-green-400 text-black font-bold rounded-none'
+                : status === 'connecting'
+                ? 'border-2 border-black bg-yellow-400 text-black font-bold rounded-none'
+                : 'border-2 border-black bg-red-500 text-white font-bold rounded-none'
+            }
+          >
+            <Activity className="size-3 mr-1" />
+            {status === 'connected' ? 'Active' : statusText}
+          </Badge>
+          {links.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="text-xs font-bold underline text-black hover:text-slate-600"
+            >
+              {link.label}
+            </Link>
+          ))}
+          {lastError && (
+            <span
+              className="text-xs text-red-600 font-mono max-w-[200px] truncate"
+              title={lastError}
+            >
+              {lastError}
+            </span>
+          )}
+        </div>
       </div>
-    </div>
+    </header>
   );
 }
-
