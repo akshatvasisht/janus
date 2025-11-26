@@ -19,16 +19,14 @@ export default function QuickStats({ summary }: QuickStatsProps) {
     );
   }
 
-  const ratio =
-    summary.estimatedRawBytes && summary.bytes > 0
-      ? (summary.estimatedRawBytes / summary.bytes).toFixed(1)
-      : '-';
-
   const modeLabel: Record<JanusMode, string> = {
     semantic: 'Semantic',
     text_only: 'Text',
     morse: 'Morse',
   };
+  const timestamp = summary.created_at_ms
+    ? new Date(summary.created_at_ms).toLocaleTimeString()
+    : '—';
 
   return (
     <Card>
@@ -36,21 +34,17 @@ export default function QuickStats({ summary }: QuickStatsProps) {
         <div className="flex justify-between items-center">
           <CardTitle>Packet Status</CardTitle>
           <span className="text-[10px] font-mono text-muted-foreground">
-            {new Date(summary.created_at_ms).toLocaleTimeString()}
+            {timestamp}
           </span>
         </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
           <div className="flex justify-between items-center">
-            <span className="text-muted-foreground text-sm">Audio In</span>
+            <span className="text-muted-foreground text-sm">Packet Size</span>
             <span className="text-foreground text-sm font-mono">
               {summary.bytes} B
             </span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-muted-foreground text-sm">Compression</span>
-            <span className="text-foreground text-sm font-mono">{ratio}x</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground text-sm">Mode</span>
@@ -58,14 +52,6 @@ export default function QuickStats({ summary }: QuickStatsProps) {
               {modeLabel[summary.mode]}
             </span>
           </div>
-          {summary.estimatedRawBytes && (
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground text-sm">Raw Est.</span>
-              <span className="text-foreground text-sm font-mono">
-                {summary.estimatedRawBytes} B
-              </span>
-            </div>
-          )}
         </div>
       </CardContent>
     </Card>

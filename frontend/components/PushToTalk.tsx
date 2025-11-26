@@ -62,7 +62,7 @@ export default function PushToTalk({
     <div className="flex flex-col items-center w-full">
       <Button
         size="lg"
-        className={`w-48 h-48 rounded-full transition-all border-4 border-black ${
+        className={`w-48 h-48 transition-all border-4 border-black rounded-none ${
           isRecording
             ? "bg-red-500 hover:bg-red-600 text-white shadow-none translate-x-[4px] translate-y-[4px]"
             : "bg-white hover:bg-gray-100 text-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px]"
