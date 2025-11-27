@@ -54,8 +54,13 @@ export default function HeaderBar({
               isConnected
                 ? 'border-2 border-black bg-green-400 text-black font-bold rounded-none'
                 : status === 'connecting'
-                ? 'border-2 border-black bg-yellow-400 text-black font-bold rounded-none'
+                ? 'border-2 border-black text-black font-bold rounded-none'
                 : 'border-2 border-black bg-red-500 text-white font-bold rounded-none'
+            }
+            style={
+              status === 'connecting'
+                ? { backgroundColor: 'var(--brand-yellow)' }
+                : undefined
             }
           >
             <Activity className="size-3 mr-1" />
