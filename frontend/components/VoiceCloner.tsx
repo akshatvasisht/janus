@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { VoiceVerificationResponse } from '@/types/janus';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 const VERIFICATION_PHRASE = 'The quick brown fox jumps over the lazy dog.';
@@ -11,13 +12,10 @@ type VoiceClonerProps = {
 
 /**
  * Voice cloning component for reference audio upload and verification.
- * 
- * Provides a modal interface for recording and uploading reference audio
- * for voice cloning. Verifies the recording matches the verification phrase
- * before accepting it as a voice reference.
- * 
- * @param props - Component props.
- * @param props.disabled - Whether the component is disabled (e.g., disconnected).
+ *
+ * Provides a modal interface for recording and uploading reference audio for
+ * voice cloning. Verifies the recording against a known phrase before
+ * accepting it as a voice reference.
  */
 export default function VoiceCloner({ disabled = false }: VoiceClonerProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -30,17 +28,32 @@ export default function VoiceCloner({ disabled = false }: VoiceClonerProps) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const successTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+      if (successTimeoutRef.current) {
+        clearTimeout(successTimeoutRef.current);
       }
     };
   }, []);
 
+  const resetSuccessTimer = () => {
+    if (successTimeoutRef.current) {
+      clearTimeout(successTimeoutRef.current);
+      successTimeoutRef.current = null;
+    }
+  };
+
   const startRecording = async () => {
+    resetSuccessTimer();
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -58,13 +71,11 @@ export default function VoiceCloner({ disabled = false }: VoiceClonerProps) {
       };
 
       mediaRecorder.onstop = async () => {
-        // Stop all tracks
         if (streamRef.current) {
           streamRef.current.getTracks().forEach((track) => track.stop());
           streamRef.current = null;
         }
 
-        // Upload audio
         await uploadAudio();
       };
 
@@ -90,6 +101,7 @@ export default function VoiceCloner({ disabled = false }: VoiceClonerProps) {
   const uploadAudio = async () => {
     setIsVerifying(true);
     setStatus('idle');
+    resetSuccessTimer();
 
     try {
       const audioBlob = new Blob(audioChunksRef.current, {
@@ -104,14 +116,18 @@ export default function VoiceCloner({ disabled = false }: VoiceClonerProps) {
         body: formData,
       });
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error('Voice verification request failed');
+      }
+
+      const data = (await response.json()) as VoiceVerificationResponse;
 
       if (data.status === 'verified') {
         setStatus('success');
         setErrorMessage('');
         setTranscript('');
-        // Close modal after 2 seconds
-        setTimeout(() => {
+        resetSuccessTimer();
+        successTimeoutRef.current = setTimeout(() => {
           setIsModalOpen(false);
           setStatus('idle');
         }, 2000);
@@ -164,7 +180,6 @@ export default function VoiceCloner({ disabled = false }: VoiceClonerProps) {
         Clone Voice
       </button>
 
-      {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-white text-foreground border-3 border-black p-6 max-w-md w-full shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">

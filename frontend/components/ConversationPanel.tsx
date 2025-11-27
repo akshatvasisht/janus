@@ -1,18 +1,20 @@
-import React from 'react';
-import { TranscriptMessage } from '../types/janus';
+import type { TranscriptMessage } from '@/types/janus';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 type ConversationPanelProps = {
   transcripts: TranscriptMessage[];
 };
 
+/**
+ * Displays the most recent responses and rolling transcript history.
+ */
 export default function ConversationPanel({
   transcripts,
 }: ConversationPanelProps) {
   const lastMessage = transcripts[0];
   const secondLastMessage = transcripts[1];
 
-  const formatTime = (timestamp?: number) => {
+  const formatTime = (timestamp?: number): string => {
     if (!timestamp) return '';
     const date = new Date(timestamp);
     return date.toLocaleTimeString([], {
@@ -25,7 +27,6 @@ export default function ConversationPanel({
 
   return (
     <div className="space-y-6 h-full flex flex-col">
-      {/* Now Speaking / Last Utterance Card */}
       <Card>
         <CardHeader>
           <CardTitle>Now Speaking</CardTitle>
@@ -38,7 +39,7 @@ export default function ConversationPanel({
                   Assistant
                 </div>
                 <div className="text-foreground bg-muted border-2 border-black p-3 font-mono text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                  "{lastMessage.text}"
+                  {lastMessage.text}
                 </div>
               </div>
             )}
@@ -48,7 +49,7 @@ export default function ConversationPanel({
                   Last Utterance
                 </div>
                 <div className="text-muted-foreground bg-white border-2 border-black p-3 font-mono text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                  "{secondLastMessage.text}"
+                  {secondLastMessage.text}
                 </div>
               </div>
             )}
@@ -61,7 +62,6 @@ export default function ConversationPanel({
         </CardContent>
       </Card>
 
-      {/* Transcript History Card */}
       <Card className="flex-1 flex flex-col min-h-0">
         <CardHeader>
           <CardTitle>Transcript History</CardTitle>
@@ -70,9 +70,8 @@ export default function ConversationPanel({
           <div className="space-y-3">
             {transcripts.length > 0 ? (
               transcripts.map((msg, index) => {
-                // Alternate between assistant (even indices) and user (odd indices)
                 const isAssistant = index % 2 === 0;
-                const timeStr = formatTime(msg.timestamp || Date.now());
+                const timeStr = msg.timestamp ? formatTime(msg.timestamp) : '—';
                 const timeParts = timeStr.split(':');
                 const displayTime =
                   timeParts.length === 3

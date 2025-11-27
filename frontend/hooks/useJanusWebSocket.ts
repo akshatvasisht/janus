@@ -7,7 +7,8 @@ import type {
   TranscriptMessage,
   PacketSummaryMessage,
   ConnectionStatus,
-} from '../types/janus';
+  IncomingTranscriptMessage,
+} from '@/types/janus';
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://127.0.0.1:8000/ws/janus';
 
@@ -19,45 +20,78 @@ export const queryKeys = {
   packetHistory: ['janus', 'packetHistory'] as const,
 };
 
+type UseJanusWebSocketResult = {
+  connectionStatus: ConnectionStatus;
+  transcripts: TranscriptMessage[];
+  lastPacket: PacketSummaryMessage | null;
+  packetHistory: PacketSummaryMessage[];
+  sendControl: (control: Partial<ControlMessage>) => void;
+  isConnected: boolean;
+  reconnect: () => void;
+  disconnect: () => void;
+};
+
+const isJanusMode = (
+  value: unknown
+): value is PacketSummaryMessage['mode'] => {
+  return (
+    value === 'semantic' || value === 'text_only' || value === 'morse'
+  );
+};
+
+const isTranscriptMessage = (
+  data: unknown
+): data is IncomingTranscriptMessage => {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    (data as { type?: unknown }).type === 'transcript' &&
+    typeof (data as { text?: unknown }).text === 'string'
+  );
+};
+
+const isPacketSummaryMessage = (
+  data: unknown
+): data is PacketSummaryMessage => {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    (data as { type?: unknown }).type === 'packet_summary' &&
+    typeof (data as { bytes?: unknown }).bytes === 'number' &&
+    typeof (data as { created_at_ms?: unknown }).created_at_ms === 'number' &&
+    isJanusMode((data as { mode?: unknown }).mode)
+  );
+};
+
 /**
  * WebSocket hook for Janus backend communication.
- * 
+ *
  * Manages WebSocket connection lifecycle, automatic reconnection, and React Query
  * cache updates for transcripts and packet summaries. Handles sending control messages
  * to the backend and receiving transcript/packet events.
- * 
+ *
  * @returns Object containing connection status, transcripts, last packet summary,
  *   control message sender, and connection management functions.
  */
-export function useJanusWebSocket() {
+export function useJanusWebSocket(): UseJanusWebSocketResult {
   const wsRef = useRef<WebSocket | null>(null);
   const [connectionStatus, setConnectionStatus] =
     useState<ConnectionStatus>('disconnected');
   const queryClient = useQueryClient();
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Query for transcripts (managed via WebSocket updates)
   const { data: transcripts = [] } = useQuery<TranscriptMessage[]>({
     queryKey: queryKeys.transcripts,
-    queryFn: async () => {
-      // Data is managed via WebSocket updates, this is just a placeholder
-      // Return initial data - actual updates come from setQueryData in ws.onmessage
-      return [];
-    },
+    queryFn: async () => [],
     initialData: [],
-    enabled: false, // Don't auto-fetch, we manage via WebSocket
+    enabled: false, // Managed via WebSocket pushes
   });
 
-  // Query for last packet summary
   const { data: lastPacket } = useQuery<PacketSummaryMessage | null>({
     queryKey: queryKeys.lastPacket,
-    queryFn: async () => {
-      // Data is managed via WebSocket updates, this is just a placeholder
-      // Return initial data - actual updates come from setQueryData in ws.onmessage
-      return null;
-    },
+    queryFn: async () => null,
     initialData: null,
-    enabled: false, // Don't auto-fetch, we manage via WebSocket
+    enabled: false,
   });
 
   const { data: packetHistory = [] } = useQuery<PacketSummaryMessage[]>({
@@ -67,74 +101,73 @@ export function useJanusWebSocket() {
     enabled: false,
   });
 
-  // Mutation for sending control messages
-  const sendControlMutation = useMutation({
-    mutationFn: async (control: Partial<ControlMessage>) => {
+  const sendControlMutation = useMutation<void, Error, Partial<ControlMessage>>({
+    mutationFn: async (control) => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         const message: ControlMessage = {
           type: 'control',
           ...control,
         };
         wsRef.current.send(JSON.stringify(message));
-      } else {
-        throw new Error('WebSocket not connected');
+        return;
       }
+
+      throw new Error('WebSocket not connected');
     },
   });
 
-  // Connect to WebSocket
-  const connect = useCallback(() => {
+  const connect = useCallback(function connectSocket() {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      return; // Already connected
+      return;
     }
 
     setConnectionStatus('connecting');
     const ws = new WebSocket(WS_URL);
 
     ws.onopen = () => {
-      console.log('WebSocket connected');
       setConnectionStatus('connected');
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
       }
     };
 
     ws.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
+        const data = JSON.parse(event.data) as unknown;
 
-        if (data.type === 'transcript') {
-          const timestamp =
-            data.end_ms ??
-            data.start_ms ??
-            Date.now();
-          // Add frontend-only fields
+        if (isTranscriptMessage(data)) {
+          const timestamp = data.end_ms ?? data.start_ms ?? Date.now();
           const transcript: TranscriptMessage = {
             ...data,
-            id: `transcript-${Date.now()}-${Math.random()}`,
+            id:
+              typeof crypto !== 'undefined' && 'randomUUID' in crypto
+                ? crypto.randomUUID()
+                : `transcript-${timestamp}`,
             timestamp,
           };
 
-          // Update transcripts query cache (prepend new transcript)
           queryClient.setQueryData<TranscriptMessage[]>(
             queryKeys.transcripts,
             (old = []) => [transcript, ...old]
           );
-        } else if (data.type === 'packet_summary') {
-          // Update last packet query cache
+          return;
+        }
+
+        if (isPacketSummaryMessage(data)) {
           queryClient.setQueryData<PacketSummaryMessage>(
             queryKeys.lastPacket,
             data
           );
-          // Append to packet history (keep a reasonable cap)
+
           queryClient.setQueryData<PacketSummaryMessage[]>(
             queryKeys.packetHistory,
             (old = []) => {
               const next = [...old, data];
-              // cap to last 200 entries to avoid unbounded growth
               return next.slice(-200);
             }
           );
+          return;
         }
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
@@ -142,28 +175,26 @@ export function useJanusWebSocket() {
     };
 
     ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
       setConnectionStatus('disconnected');
+      console.error('WebSocket error:', error);
     };
 
     ws.onclose = () => {
-      console.log('WebSocket disconnected');
       setConnectionStatus('disconnected');
       wsRef.current = null;
 
-      // Auto-reconnect after 3 seconds
       reconnectTimeoutRef.current = setTimeout(() => {
-        connect();
+        connectSocket();
       }, 3000);
     };
 
     wsRef.current = ws;
   }, [queryClient]);
 
-  // Disconnect from WebSocket
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
     }
     if (wsRef.current) {
       wsRef.current.close();
@@ -172,16 +203,13 @@ export function useJanusWebSocket() {
     setConnectionStatus('disconnected');
   }, []);
 
-  // Connect on mount, disconnect on unmount
   useEffect(() => {
     connect();
     return () => {
       disconnect();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount/unmount
+  }, [connect, disconnect]);
 
-  // Update connection status in query cache
   useEffect(() => {
     queryClient.setQueryData<ConnectionStatus>(
       queryKeys.connectionStatus,

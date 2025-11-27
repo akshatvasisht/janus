@@ -1,5 +1,4 @@
-import React from 'react';
-import { EmotionOverride } from '../types/janus';
+import type { EmotionOverride } from '@/types/janus';
 import { Button } from './ui/button';
 
 type EmotionSelectorProps = {
@@ -7,6 +6,9 @@ type EmotionSelectorProps = {
   onChange: (v: EmotionOverride) => void;
 };
 
+/**
+ * Selector for overriding inferred emotion on the Janus stream.
+ */
 export default function EmotionSelector({
   value,
   onChange,

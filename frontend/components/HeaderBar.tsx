@@ -1,6 +1,7 @@
-import React from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
-import { ConnectionStatus } from '../types/janus';
+import logo from '@/assets/logo.png';
+import type { ConnectionStatus } from '@/types/janus';
 import { Badge } from './ui/badge';
 import { Wifi, Activity } from 'lucide-react';
 
@@ -15,30 +16,33 @@ type HeaderBarProps = {
   links?: NavigationLink[];
 };
 
+/**
+ * Global header showing Janus brand, connection state, and navigation links.
+ */
 export default function HeaderBar({
   status,
   lastError,
   links = [],
 }: HeaderBarProps) {
-  const statusText = {
+  const statusText: Record<ConnectionStatus, string> = {
     connected: 'Connected',
     connecting: 'Connecting...',
     disconnected: 'Disconnected',
-  }[status];
+  };
 
   const isConnected = status === 'connected';
 
   return (
-    <header className="border-b-4 border-black bg-white">
+    <header className="border-b-4 border-black bg-transparent">
       <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-        <div className="flex items-start gap-0 flex-col">
-          <h1 className="tracking-wider text-2xl font-black text-black uppercase leading-none">
-            Janus
-          </h1>
-          <h4 className="text-sm font-bold text-muted-foreground uppercase leading-tight">
-            Semantic Audio Codec
-          </h4>
-        </div>
+        <Link href="/" className="flex items-center">
+          <Image
+            src={logo}
+            alt="Janus"
+            className="h-12 w-auto max-w-[320px]"
+            priority
+          />
+        </Link>
         <div className="flex items-center gap-4 h-full">
           {isConnected && (
             <div className="flex items-center gap-2">
@@ -52,12 +56,17 @@ export default function HeaderBar({
               isConnected
                 ? 'border-2 border-black bg-green-400 text-black font-bold rounded-none'
                 : status === 'connecting'
-                ? 'border-2 border-black bg-yellow-400 text-black font-bold rounded-none'
+                ? 'border-2 border-black text-black font-bold rounded-none'
                 : 'border-2 border-black bg-red-500 text-white font-bold rounded-none'
+            }
+            style={
+              status === 'connecting'
+                ? { backgroundColor: 'var(--brand-yellow)' }
+                : undefined
             }
           >
             <Activity className="size-3 mr-1" />
-            {status === 'connected' ? 'Active' : statusText}
+            {status === 'connected' ? 'Active' : statusText[status]}
           </Badge>
           {links.map((link) => (
             <Link

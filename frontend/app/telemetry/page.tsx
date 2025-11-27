@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import TelemetryGraph from '@/components/TelemetryGraph';
 import NetworkLog from '@/components/NetworkLog';
 import { useJanusWebSocket } from '@/hooks/useJanusWebSocket';
@@ -13,11 +13,19 @@ import {
 } from '@/components/ui/card';
 import HeaderBar from '@/components/HeaderBar';
 
+type PacketTotals = {
+  totalBytes: number;
+  totalPackets: number;
+};
+
+/**
+ * Telemetry view for inspecting packet throughput and connection health.
+ */
 export default function TelemetryPage() {
   const { packetHistory, connectionStatus, lastPacket } = useJanusWebSocket();
 
-  const { totalBytes, totalPackets } = useMemo(() => {
-    const counts = packetHistory.reduce(
+  const { totalBytes, totalPackets } = useMemo<PacketTotals>(() => {
+    const counts: PacketTotals = packetHistory.reduce(
       (acc, pkt) => {
         acc.totalBytes += pkt.bytes;
         acc.totalPackets += 1;
@@ -29,11 +37,13 @@ export default function TelemetryPage() {
   }, [packetHistory]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen text-foreground">
       <main className="container mx-auto px-6 py-8 space-y-6">
         <HeaderBar
           status={connectionStatus}
-          lastError={connectionStatus === 'disconnected' ? 'Connection lost' : undefined}
+          lastError={
+            connectionStatus === 'disconnected' ? 'Connection lost' : undefined
+          }
           links={[{ href: '/', label: 'Dashboard' }]}
         />
 
@@ -41,9 +51,6 @@ export default function TelemetryPage() {
           <Card className="xl:col-span-2">
             <CardHeader>
               <CardTitle>Bandwidth</CardTitle>
-              <CardDescription>
-                Packets over time (live from backend)
-              </CardDescription>
             </CardHeader>
             <CardContent className="p-4">
               <TelemetryGraph packets={packetHistory} />
@@ -53,7 +60,6 @@ export default function TelemetryPage() {
           <Card>
             <CardHeader>
               <CardTitle>Summary</CardTitle>
-              <CardDescription>Rolling metrics</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
@@ -89,7 +95,6 @@ export default function TelemetryPage() {
         <Card>
           <CardHeader>
             <CardTitle>Packet Log</CardTitle>
-            <CardDescription>Newest first</CardDescription>
           </CardHeader>
           <CardContent className="p-4">
             <NetworkLog packets={packetHistory} />
