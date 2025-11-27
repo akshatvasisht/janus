@@ -8,7 +8,8 @@ import type {
   TranscriptMessage,
   PacketSummaryMessage,
   ConnectionStatus,
-} from '../types/janus';
+  ControlStateUpdate,
+} from '@/types/janus';
 export type JanusSocketState = {
   status: ConnectionStatus;
   mode: JanusMode;
@@ -18,16 +19,15 @@ export type JanusSocketState = {
   transcripts: TranscriptMessage[];
   lastPacketSummary?: PacketSummaryMessage;
   lastError?: string | null;
-  sendControl: (
-    control: Partial<{
-      mode?: JanusMode;
-      emotionOverride?: EmotionOverride;
-      isRecording?: boolean;
-      isStreaming?: boolean;
-    }>
-  ) => void;
+  sendControl: (control: ControlStateUpdate) => void;
 };
 
+/**
+ * Combines WebSocket connectivity with local UI state for Janus controls.
+ *
+ * Maintains optimistic UI state for recording/streaming/mode while delegating
+ * network synchronization to the underlying WebSocket hook.
+ */
 export function useJanusSocket(): JanusSocketState {
   const [mode, setMode] = useState<JanusMode>('semantic');
   const [emotionOverride, setEmotionOverride] =
@@ -44,24 +44,20 @@ export function useJanusSocket(): JanusSocketState {
   } = useJanusWebSocket();
 
   const sendControl = useCallback(
-    (
-      partial: Partial<{
-        mode?: JanusMode;
-        emotionOverride?: EmotionOverride;
-        isRecording?: boolean;
-        isStreaming?: boolean;
-      }>
-    ) => {
-      // Update local state immediately for UI responsiveness
-      if (partial.mode !== undefined) setMode(partial.mode);
-      if (partial.emotionOverride !== undefined)
+    (partial: ControlStateUpdate) => {
+      if (partial.mode !== undefined) {
+        setMode(partial.mode);
+      }
+      if (partial.emotionOverride !== undefined) {
         setEmotionOverride(partial.emotionOverride);
-      if (partial.isRecording !== undefined)
+      }
+      if (partial.isRecording !== undefined) {
         setIsRecording(partial.isRecording);
-      if (partial.isStreaming !== undefined)
+      }
+      if (partial.isStreaming !== undefined) {
         setIsStreaming(partial.isStreaming);
+      }
 
-      // Send to backend via WebSocket
       if (isConnected) {
         sendControlRaw({
           mode: partial.mode,

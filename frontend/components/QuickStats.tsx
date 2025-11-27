@@ -1,11 +1,19 @@
-import React from 'react';
-import { JanusMode, PacketSummaryMessage } from '../types/janus';
+import type { JanusMode, PacketSummaryMessage } from '@/types/janus';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 type QuickStatsProps = {
   summary?: PacketSummaryMessage;
 };
 
+const MODE_LABELS: Record<JanusMode, string> = {
+  semantic: 'Semantic',
+  text_only: 'Text',
+  morse: 'Morse',
+};
+
+/**
+ * Compact status card summarizing the most recent packet.
+ */
 export default function QuickStats({ summary }: QuickStatsProps) {
   if (!summary) {
     return (
@@ -19,11 +27,6 @@ export default function QuickStats({ summary }: QuickStatsProps) {
     );
   }
 
-  const modeLabel: Record<JanusMode, string> = {
-    semantic: 'Semantic',
-    text_only: 'Text',
-    morse: 'Morse',
-  };
   const timestamp = summary.created_at_ms
     ? new Date(summary.created_at_ms).toLocaleTimeString()
     : '—';
@@ -49,7 +52,7 @@ export default function QuickStats({ summary }: QuickStatsProps) {
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground text-sm">Mode</span>
             <span className="text-foreground text-sm">
-              {modeLabel[summary.mode]}
+              {MODE_LABELS[summary.mode]}
             </span>
           </div>
         </div>

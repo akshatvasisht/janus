@@ -11,6 +11,17 @@ export type ControlMessage = {
   emotion_override?: EmotionOverride | null;
 };
 
+export type ControlStateUpdate = Partial<{
+  isRecording: boolean;
+  isStreaming: boolean;
+  mode: JanusMode;
+  emotionOverride: EmotionOverride;
+}>;
+
+export type HealthResponse = {
+  status: 'ok';
+};
+
 // Transcript message FROM backend
 export type TranscriptMessage = {
   type: 'transcript';
@@ -27,6 +38,11 @@ export type TranscriptMessage = {
   inferredEmotion?: string;
 };
 
+export type IncomingTranscriptMessage = Omit<
+  TranscriptMessage,
+  'id' | 'timestamp'
+>;
+
 // Packet summary FROM backend
 export type PacketSummaryMessage = {
   type: 'packet_summary'; // Note: underscore, not hyphen
@@ -36,3 +52,10 @@ export type PacketSummaryMessage = {
 };
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
+
+export type VoiceVerificationStatus = 'verified' | 'failed';
+
+export type VoiceVerificationResponse = {
+  status: VoiceVerificationStatus;
+  transcript?: string;
+};
