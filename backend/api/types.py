@@ -51,7 +51,8 @@ class PacketSummaryMessage(BaseModel):
     bytes: int
     mode: JanusMode
     created_at_ms: int
+    emotion: Optional[str] = None
+    snippet: Optional[str] = None
 
 # Union type for outbound messages
 JanusOutboundMessage = TranscriptMessage | PacketSummaryMessage
-

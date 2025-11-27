@@ -186,6 +186,24 @@ def receiver_loop(
                     avg_pitch_hz = prosody.get('avg_pitch_hz') if isinstance(prosody.get('avg_pitch_hz'), (int, float)) else None
                     avg_energy = prosody.get('avg_energy') if isinstance(prosody.get('avg_energy'), (int, float)) else None
                     
+                    if packet.override_emotion != "Auto":
+                        emotion_tag = packet.override_emotion
+                    else:
+                        prosody = packet.prosody
+                        pitch = prosody.get('pitch', 'Normal')
+                        energy = prosody.get('energy', 'Normal')
+                        
+                        if pitch == 'High' and energy == 'Loud':
+                            emotion_tag = 'Excited'
+                        elif pitch == 'High' and energy == 'Normal':
+                            emotion_tag = 'Joyful'
+                        elif pitch == 'Low' and energy == 'Loud':
+                            emotion_tag = 'Panicked'
+                        elif pitch == 'Low' and energy in ('Quiet', 'Low'):
+                            emotion_tag = 'Serious'
+                        else:
+                            emotion_tag = 'Neutral'
+
                     asyncio.run_coroutine_threadsafe(
                         _emit_events(
                             text=packet.text,
@@ -194,29 +212,12 @@ def receiver_loop(
                             mode=api_mode,
                             transcript_queue=transcript_queue,
                             packet_queue=packet_queue,
+                            emotion=emotion_tag,
                         ),
                         event_loop
                     )
                 except Exception as e:
                     logger.error(f"Failed to emit events to frontend: {e}")
-
-                if packet.override_emotion != "Auto":
-                    emotion_tag = packet.override_emotion
-                else:
-                    prosody = packet.prosody
-                    pitch = prosody.get('pitch', 'Normal')
-                    energy = prosody.get('energy', 'Normal')
-                    
-                    if pitch == 'High' and energy == 'Loud':
-                        emotion_tag = 'Excited'
-                    elif pitch == 'High' and energy == 'Normal':
-                        emotion_tag = 'Joyful'
-                    elif pitch == 'Low' and energy == 'Loud':
-                        emotion_tag = 'Panicked'
-                    elif pitch == 'Low' and energy in ('Quiet', 'Low'):
-                        emotion_tag = 'Serious'
-                    else:
-                        emotion_tag = 'Neutral'
                 
                 mode_names = {
                     ProtocolJanusMode.SEMANTIC_VOICE: "Semantic Voice",
@@ -488,6 +489,7 @@ async def smart_ear_loop(
                         mode=control_state.mode,
                         transcript_queue=transcript_queue,
                         packet_queue=packet_queue,
+                        emotion=str(control_state.emotion_override),
                     )
 
     except asyncio.CancelledError:
@@ -508,6 +510,8 @@ async def _emit_events(
     mode: JanusMode,
     transcript_queue: "asyncio.Queue[TranscriptMessage]",
     packet_queue: "asyncio.Queue[PacketSummaryMessage]",
+    emotion: str | None = None,
+    snippet_length: int = 60,
 ) -> None:
     """
     Emit transcript and packet summary events to frontend queues.
@@ -538,10 +542,14 @@ async def _emit_events(
     # Packet estimate
     approximate_bytes = len(text.encode("utf-8")) + 16
 
+    snippet = text[:snippet_length].strip()
+
     packet_msg = PacketSummaryMessage(
         type="packet_summary",
         bytes=approximate_bytes,
         mode=mode,
         created_at_ms=now_ms,
+        emotion=emotion,
+        snippet=snippet if snippet else None,
     )
     await packet_queue.put(packet_msg)

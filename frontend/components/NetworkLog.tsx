@@ -36,6 +36,16 @@ export default function NetworkLog({ packets }: NetworkLogProps) {
               {packet.mode.toUpperCase()}
             </span>
             <span className="text-foreground font-bold">{packet.bytes} B</span>
+            {packet.emotion ? (
+              <span className="text-foreground font-medium truncate">
+                {packet.emotion}
+              </span>
+            ) : null}
+            {packet.snippet ? (
+              <span className="text-muted-foreground truncate max-w-[240px]">
+                “{packet.snippet}”
+              </span>
+            ) : null}
           </div>
         ))}
         {entries.length === 0 && (
