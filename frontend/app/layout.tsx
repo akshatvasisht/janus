@@ -25,6 +25,12 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en">
       <body className="antialiased">
+        <div className="background-gradient-wrapper" aria-hidden="true">
+          <div className="blob blob-yellow" />
+          <div className="blob blob-green" />
+          <div className="blob blob-blue" />
+        </div>
+        <div className="background-noise" aria-hidden="true" />
         <Providers>{children}</Providers>
       </body>
     </html>
