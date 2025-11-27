@@ -31,7 +31,7 @@ export default function HeaderBar({
   const isConnected = status === 'connected';
 
   return (
-    <header className="border-b-4 border-black bg-white">
+    <header className="border-b-4 border-black bg-transparent">
       <div className="container mx-auto px-6 py-4 flex items-center justify-between">
         <div className="flex items-start gap-0 flex-col">
           <h1 className="tracking-wider text-2xl font-black text-black uppercase leading-none">
