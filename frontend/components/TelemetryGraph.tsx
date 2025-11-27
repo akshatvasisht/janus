@@ -38,10 +38,7 @@ export default function TelemetryGraph({ packets }: TelemetryGraphProps) {
 
   const formatTick = (value: string): string => value.split(':')[2] ?? value;
   return (
-    <div className="w-full h-64 bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-4">
-      <h3 className="text-sm font-bold text-black mb-4 uppercase">
-        Bandwidth Usage (Bytes)
-      </h3>
+    <div className="w-full h-64">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data}>
           <CartesianGrid strokeDasharray="0" stroke="#e5e5e5" />

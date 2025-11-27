@@ -51,7 +51,6 @@ export default function TelemetryPage() {
           <Card className="xl:col-span-2">
             <CardHeader>
               <CardTitle>Bandwidth</CardTitle>
-              <CardDescription>Packets over time</CardDescription>
             </CardHeader>
             <CardContent className="p-4">
               <TelemetryGraph packets={packetHistory} />
@@ -96,7 +95,6 @@ export default function TelemetryPage() {
         <Card>
           <CardHeader>
             <CardTitle>Packet Log</CardTitle>
-            <CardDescription>Newest first</CardDescription>
           </CardHeader>
           <CardContent className="p-4">
             <NetworkLog packets={packetHistory} />
