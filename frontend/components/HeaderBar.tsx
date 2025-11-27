@@ -1,4 +1,6 @@
+import Image from 'next/image';
 import Link from 'next/link';
+import logo from '@/assets/logo.png';
 import type { ConnectionStatus } from '@/types/janus';
 import { Badge } from './ui/badge';
 import { Wifi, Activity } from 'lucide-react';
@@ -33,14 +35,14 @@ export default function HeaderBar({
   return (
     <header className="border-b-4 border-black bg-transparent">
       <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-        <div className="flex items-start gap-0 flex-col">
-          <h1 className="tracking-wider text-2xl font-black text-black uppercase leading-none">
-            Janus
-          </h1>
-          <h4 className="text-sm font-bold text-muted-foreground uppercase leading-tight">
-            Semantic Audio Codec
-          </h4>
-        </div>
+        <Link href="/" className="flex items-center">
+          <Image
+            src={logo}
+            alt="Janus"
+            className="h-12 w-auto max-w-[320px]"
+            priority
+          />
+        </Link>
         <div className="flex items-center gap-4 h-full">
           {isConnected && (
             <div className="flex items-center gap-2">
