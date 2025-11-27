@@ -38,4 +38,4 @@ Thumbs.db
 logs/
 
 # Generated assets
-backend/reference_audio.wav
+**/*.wav

@@ -49,6 +49,8 @@ export type PacketSummaryMessage = {
   bytes: number;
   mode: JanusMode;
   created_at_ms: number;
+  emotion?: string | null;
+  snippet?: string | null;
 };
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
