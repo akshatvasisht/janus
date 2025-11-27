@@ -1,6 +1,5 @@
-import React from 'react';
 import Link from 'next/link';
-import { ConnectionStatus } from '../types/janus';
+import type { ConnectionStatus } from '@/types/janus';
 import { Badge } from './ui/badge';
 import { Wifi, Activity } from 'lucide-react';
 
@@ -15,16 +14,19 @@ type HeaderBarProps = {
   links?: NavigationLink[];
 };
 
+/**
+ * Global header showing Janus brand, connection state, and navigation links.
+ */
 export default function HeaderBar({
   status,
   lastError,
   links = [],
 }: HeaderBarProps) {
-  const statusText = {
+  const statusText: Record<ConnectionStatus, string> = {
     connected: 'Connected',
     connecting: 'Connecting...',
     disconnected: 'Disconnected',
-  }[status];
+  };
 
   const isConnected = status === 'connected';
 
@@ -57,7 +59,7 @@ export default function HeaderBar({
             }
           >
             <Activity className="size-3 mr-1" />
-            {status === 'connected' ? 'Active' : statusText}
+            {status === 'connected' ? 'Active' : statusText[status]}
           </Badge>
           {links.map((link) => (
             <Link

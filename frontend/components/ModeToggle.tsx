@@ -1,5 +1,4 @@
-import React from 'react';
-import { JanusMode } from '../types/janus';
+import type { JanusMode } from '@/types/janus';
 import { Button } from './ui/button';
 
 type ModeToggleProps = {
@@ -8,6 +7,9 @@ type ModeToggleProps = {
   isMorseEnabled?: boolean;
 };
 
+/**
+ * Three-way toggle for selecting Janus transport mode.
+ */
 export default function ModeToggle({
   mode,
   onChange,

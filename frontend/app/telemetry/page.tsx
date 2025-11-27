@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import TelemetryGraph from '@/components/TelemetryGraph';
 import NetworkLog from '@/components/NetworkLog';
 import { useJanusWebSocket } from '@/hooks/useJanusWebSocket';
@@ -13,11 +13,19 @@ import {
 } from '@/components/ui/card';
 import HeaderBar from '@/components/HeaderBar';
 
+type PacketTotals = {
+  totalBytes: number;
+  totalPackets: number;
+};
+
+/**
+ * Telemetry view for inspecting packet throughput and connection health.
+ */
 export default function TelemetryPage() {
   const { packetHistory, connectionStatus, lastPacket } = useJanusWebSocket();
 
-  const { totalBytes, totalPackets } = useMemo(() => {
-    const counts = packetHistory.reduce(
+  const { totalBytes, totalPackets } = useMemo<PacketTotals>(() => {
+    const counts: PacketTotals = packetHistory.reduce(
       (acc, pkt) => {
         acc.totalBytes += pkt.bytes;
         acc.totalPackets += 1;

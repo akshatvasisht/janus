@@ -1,15 +1,18 @@
 'use client';
 
-import React from 'react';
+import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 type SectionHeaderProps = {
   title: string;
   description?: string;
   className?: string;
-  rightSlot?: React.ReactNode;
+  rightSlot?: ReactNode;
 };
 
+/**
+ * Standardized section header with optional description and right-aligned slot.
+ */
 export function SectionHeader({
   title,
   description,

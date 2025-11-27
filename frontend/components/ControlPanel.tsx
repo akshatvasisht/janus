@@ -1,15 +1,13 @@
-import React from 'react';
-import {
+import type {
   JanusMode,
   EmotionOverride,
-  PacketSummaryMessage,
   ConnectionStatus,
-} from '../types/janus';
+  ControlStateUpdate,
+} from '@/types/janus';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import PushToTalk from './PushToTalk';
 import ModeToggle from './ModeToggle';
 import EmotionSelector from './EmotionSelector';
-import QuickStats from './QuickStats';
 import VoiceCloner from './VoiceCloner';
 
 type ControlPanelProps = {
@@ -18,14 +16,15 @@ type ControlPanelProps = {
   isStreaming: boolean;
   mode: JanusMode;
   emotionOverride: EmotionOverride;
-  onUpdateControl: (partial: {
-    isRecording?: boolean;
-    isStreaming?: boolean;
-    mode?: JanusMode;
-    emotionOverride?: EmotionOverride;
-  }) => void;
+  onUpdateControl: (partial: ControlStateUpdate) => void;
 };
 
+/**
+ * Control surface for recording, streaming mode selection, and emotion override.
+ *
+ * Optimistically updates UI state and delegates backend synchronization to
+ * higher-level hooks supplied via `onUpdateControl`.
+ */
 export default function ControlPanel({
   status,
   isRecording,
@@ -38,7 +37,6 @@ export default function ControlPanel({
 
   return (
     <div className="space-y-6">
-      {/* PTT Button Card */}
       <Card>
         <CardContent className="min-h-[240px] flex items-center justify-center">
           <PushToTalk
@@ -54,7 +52,6 @@ export default function ControlPanel({
         </CardContent>
       </Card>
 
-      {/* Mode Selector Card */}
       <Card>
         <CardHeader>
           <CardTitle>Mode Selector</CardTitle>
@@ -68,7 +65,6 @@ export default function ControlPanel({
         </CardContent>
       </Card>
 
-      {/* Emotion Override Card */}
       <Card>
         <CardHeader>
           <CardTitle>Emotion Override</CardTitle>
@@ -81,7 +77,6 @@ export default function ControlPanel({
         </CardContent>
       </Card>
 
-      {/* Voice Cloner Card (kept from current branch) */}
       <Card>
         <CardHeader>
           <CardTitle>Voice Cloning</CardTitle>
@@ -90,7 +85,6 @@ export default function ControlPanel({
           <VoiceCloner disabled={!isConnected} />
         </CardContent>
       </Card>
-
     </div>
   );
 }

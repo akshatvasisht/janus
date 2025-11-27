@@ -1,24 +1,19 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
+
+type ProvidersProps = {
+  children: ReactNode;
+};
 
 /**
- * Providers component that sets up React Query for the application.
- * 
- * Initializes and provides a QueryClient instance to all child components,
- * enabling data fetching, caching, and synchronization capabilities throughout
- * the application.
- * 
- * @param props - Component props.
- * @param props.children - React node containing components that require React Query context.
+ * Provides a shared React Query client to the application shell.
  */
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({ children }: ProvidersProps) {
   const [queryClient] = useState(() => new QueryClient());
 
   return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 }
