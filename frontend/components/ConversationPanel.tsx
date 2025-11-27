@@ -35,9 +35,6 @@ export default function ConversationPanel({
           <div className="space-y-4">
             {lastMessage && (
               <div>
-                <div className="text-xs text-muted-foreground mb-1 uppercase font-bold">
-                  Assistant
-                </div>
                 <div className="text-foreground bg-muted border-2 border-black p-3 font-mono text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                   {lastMessage.text}
                 </div>
@@ -81,7 +78,7 @@ export default function ConversationPanel({
                 return (
                   <div key={msg.id || index} className="space-y-1">
                     <div className="text-xs text-muted-foreground font-mono">
-                      {displayTime} - {isAssistant ? 'ASSISTANT' : 'USER'}
+                      {displayTime}
                     </div>
                     <div
                       className={`p-2 border-2 border-black text-sm font-mono shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${
