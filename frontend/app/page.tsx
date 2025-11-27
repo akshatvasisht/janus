@@ -20,7 +20,7 @@ export default function DashboardPage() {
   } = useJanusSocket();
 
   return (
-    <div className="relative min-h-screen bg-background text-foreground">
+    <div className="relative min-h-screen text-foreground">
       <div className="relative z-10">
         <main className="min-h-screen font-sans">
           <div className="container mx-auto px-6 py-8 space-y-6 flex flex-col">
@@ -42,7 +42,7 @@ export default function DashboardPage() {
                 />
 
                 <div className="mt-auto pt-6 text-[10px] text-muted-foreground text-center pb-4">
-                  Janus Project • Dashboard v1.0 • Mock Mode Active
+                  Janus Project • Dashboard v1.0
                 </div>
               </div>
 

@@ -89,6 +89,7 @@
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: #000000;
   --sidebar-ring: var(--primary);
+  --brand-yellow: #ffde00;
   --font-sans: DM Sans, sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
   --font-mono: Space Mono, monospace;
@@ -122,4 +123,76 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Mesh gradient backdrop */
+.background-gradient-wrapper {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -2;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(
+    circle at 100% 100%,
+    black 0%,
+    black 40%,
+    transparent 80%
+  );
+  mask-image: radial-gradient(
+    circle at 100% 100%,
+    black 0%,
+    black 40%,
+    transparent 80%
+  );
+}
+
+.blob {
+  position: absolute;
+  filter: blur(45px);
+  opacity: 0.8;
+}
+
+.blob-blue {
+  background-color: var(--primary);
+  width: 70vw;
+  height: 35vw;
+  max-width: 800px;
+  bottom: -15vw;
+  right: -20vw;
+  transform: rotate(-15deg);
+  border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+}
+
+.blob-green {
+  background-color: var(--secondary);
+  width: 35vw;
+  height: 60vw;
+  max-width: 500px;
+  bottom: -5vw;
+  right: -5vw;
+  transform: rotate(35deg);
+  border-radius: 60% 40% 30% 70% / 70% 30% 70% 40%;
+}
+
+.blob-yellow {
+  background-color: var(--brand-yellow);
+  width: 40vw;
+  height: 30vw;
+  max-width: 450px;
+  bottom: 15vw;
+  right: 5vw;
+  transform: rotate(-25deg);
+  border-radius: 35% 65% 66% 34% / 37% 33% 67% 63%;
+}
+
+.background-noise {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  opacity: 0.05;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E");
 }
