@@ -29,6 +29,11 @@ class ControlState(BaseModel):
     is_recording: bool = False
     emotion_override: EmotionOverride = EmotionOverride.AUTO
 
+    # Audio ducking configuration and state
+    ducking_enabled: bool = True
+    ducking_level: float = 0.25
+    is_talking: bool = False
+
 
 # Global-ish shared state (within the backend process)
 control_state = ControlState()

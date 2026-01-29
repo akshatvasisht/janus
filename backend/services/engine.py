@@ -79,6 +79,8 @@ def playback_worker(
                 continue
             
             if audio_bytes:
+                from ..common import engine_state as _engine_state  # local import to avoid cycles
+                audio_bytes = apply_ducking_if_needed(audio_bytes, _engine_state.control_state)
                 audio_service.write_chunk(audio_bytes)
             
             playback_queue.task_done()
@@ -86,6 +88,49 @@ def playback_worker(
         except Exception as e:
             logger.error(f"Playback error: {e}")
             playback_queue.task_done()
+
+
+def apply_ducking_if_needed(audio_bytes: bytes, state: "engine_state.ControlState") -> bytes:
+    """
+    Apply audio ducking based on shared control state.
+
+    When ducking is enabled and the local user is currently talking, scale the
+    playback PCM samples by the configured ducking_level. Otherwise, return the
+    audio bytes unchanged.
+
+    Args:
+        audio_bytes: Raw PCM audio data (int16).
+        state: Shared ControlState containing ducking configuration.
+
+    Returns:
+        bytes: Possibly gain-reduced PCM audio.
+    """
+    try:
+        if not getattr(state, "ducking_enabled", True):
+            return audio_bytes
+
+        if not getattr(state, "is_talking", False):
+            return audio_bytes
+
+        level = float(getattr(state, "ducking_level", 0.25))
+        # Clamp to [0.0, 1.0]
+        if level <= 0.0:
+            level = 0.0
+        elif level >= 1.0:
+            return audio_bytes
+
+        if not audio_bytes:
+            return audio_bytes
+
+        samples = np.frombuffer(audio_bytes, dtype=np.int16)
+        if samples.size == 0:
+            return audio_bytes
+
+        scaled = np.clip(samples.astype(np.float32) * level, -32768, 32767).astype(np.int16)
+        return scaled.tobytes()
+    except Exception as e:
+        logger.error(f"Error applying ducking: {e}")
+        return audio_bytes
 
 
 def receiver_loop(
@@ -407,18 +452,23 @@ async def smart_ear_loop(
             is_streaming_mode = control_state.is_streaming
             is_recording_hold = control_state.is_recording
 
+            # Push-to-talk / recording-hold: user is actively talking
             if is_recording_hold:
+                control_state.is_talking = True
                 audio_buffer.append(chunk)
                 previous_hold_state = True
                 continue
 
+            # Transition: PTT just released -> process buffered audio and stop talking
             if previous_hold_state and not is_recording_hold:
                 trigger_processing = True
                 previous_hold_state = False
+                control_state.is_talking = False
 
             elif is_streaming_mode:
                 is_speech = vad_model.is_speech(chunk)
                 if is_speech:
+                    control_state.is_talking = True
                     audio_buffer.append(chunk)
                     silence_counter = 0
                 else:
@@ -428,9 +478,11 @@ async def smart_ear_loop(
 
                     if silence_counter > SILENCE_THRESHOLD_CHUNKS:
                         trigger_processing = True
+                        control_state.is_talking = False
 
             else:
-                pass
+                # Neither recording nor streaming -> ensure talking flag is cleared
+                control_state.is_talking = False
 
             if trigger_processing and len(audio_buffer) > 0:
                 combined_audio = np.concatenate(audio_buffer)
