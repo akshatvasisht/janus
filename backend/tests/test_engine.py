@@ -52,8 +52,8 @@ def test_playback_worker():
     mock_audio.write_chunk.assert_called_with(b'audio_data')
 
 
-def test_apply_ducking_if_needed_no_ducking_when_disabled_or_not_talking(reset_ducking_state):
-    """Ducking should not modify audio when disabled or when user not talking."""
+def test_audio_ducking(reset_ducking_state):
+    """Test audio ducking applies gain reduction when enabled and user is talking."""
     state = reset_ducking_state
     original = np.array([1000, -2000, 3000], dtype=np.int16)
     audio_bytes = original.tobytes()
@@ -70,22 +70,21 @@ def test_apply_ducking_if_needed_no_ducking_when_disabled_or_not_talking(reset_d
     out2 = apply_ducking_if_needed(audio_bytes, state)
     assert out2 == audio_bytes
 
-
-def test_apply_ducking_if_needed_applies_gain_when_talking(reset_ducking_state):
-    """Ducking should scale int16 PCM amplitudes when enabled and talking."""
-    state = reset_ducking_state
+    # Case 3: ducking enabled, talking, scales audio correctly
     state.ducking_enabled = True
     state.is_talking = True
     state.ducking_level = 0.5
-
-    original = np.array([1000, -2000, 0, 32767, -32768], dtype=np.int16)
-    audio_bytes = original.tobytes()
-
-    out_bytes = apply_ducking_if_needed(audio_bytes, state)
+    original_scaled = np.array([1000, -2000, 0, 32767, -32768], dtype=np.int16)
+    audio_bytes_scaled = original_scaled.tobytes()
+    out_bytes = apply_ducking_if_needed(audio_bytes_scaled, state)
     out = np.frombuffer(out_bytes, dtype=np.int16)
-
-    expected = np.clip(original.astype(np.float32) * 0.5, -32768, 32767).astype(np.int16)
+    expected = np.clip(original_scaled.astype(np.float32) * 0.5, -32768, 32767).astype(np.int16)
     assert np.allclose(out, expected, atol=1)
+
+    # Case 4: empty buffer handled without crashing
+    empty_bytes = b''
+    out_empty = apply_ducking_if_needed(empty_bytes, state)
+    assert out_empty == empty_bytes
 
 
 @pytest.fixture
@@ -102,4 +101,3 @@ def reset_ducking_state():
         state.ducking_enabled = original_ducking_enabled
         state.ducking_level = original_ducking_level
         state.is_talking = original_is_talking
-
