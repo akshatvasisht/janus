@@ -22,7 +22,7 @@ Janus is a real-time semantic audio codec system designed to optimize bandwidth 
 Janus is an implementation of concepts introduced in **[SemantiCodec (Liu et al., 2024)](https://arxiv.org/abs/2405.00233)**, a state-of-the-art semantic codec that demonstrated the viability of sub-kbps speech transmission. While the original paper focuses on diffusion-based reconstruction, Janus adapts this for real-time latency by substituting the diffusion decoder with a faster LLM-based instruction pipeline. 
 
 ### How Janus Works
-Janus extends this paradigm into a real-time system by leveraging an end-to-end STT → semantic-packet → TTS pipeline:
+Janus extends into a real-time system by leveraging an end-to-end STT → semantic-packet → TTS pipeline:
 1. **STT Layer (Faster-Whisper)**
    Extracts text and timestamps from live speech.
 2. **Prosody Layer (Aubio)**
@@ -80,7 +80,7 @@ Traditional codecs bind audio quality to bandwidth: less data means worse sound.
 
 ## Documentation
 
-- **[SETUP.md](SETUP.md)**: Environment setup, installation, and start instructions
+- **[SETUP.md](docs/SETUP.md)**: Environment setup, installation, and start instructions
 - **[ARCHITECTURE.md](docs/ARCHITECTURE.md)**: Architecture, tech stack, and design decisions
 - **[API.md](docs/API.md)**: WebSocket and REST API reference
 - **[TESTING.md](docs/TESTING.md)**: Testing guidelines
