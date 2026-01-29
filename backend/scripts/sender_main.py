@@ -178,13 +178,18 @@ def audio_consumer(
             audio_queue.task_done()
 
 
-def main_loop() -> None:
+def main_loop(stop_event: threading.Event | None = None) -> None:
     """
     Main entry point for the sender application.
     
     Initializes audio processing services and sets up producer-consumer threads
     for continuous audio capture and processing. Manages application lifecycle
-    and graceful shutdown on interrupt.
+    and graceful shutdown on interrupt or stop_event.
+    
+    Args:
+        stop_event: Optional threading event to signal shutdown. If None, creates
+                   an internal event and waits for KeyboardInterrupt. If provided,
+                   exits when the event is set.
     
     Returns:
         None
@@ -204,7 +209,13 @@ def main_loop() -> None:
     link_simulator = LinkSimulator(target_ip=target_ip, target_port=target_port, use_tcp=use_tcp)
     
     audio_queue = queue.Queue(maxsize=100)
-    stop_event = threading.Event()
+    
+    # Use provided stop_event or create internal one
+    if stop_event is None:
+        stop_event = threading.Event()
+        use_keyboard_interrupt = True
+    else:
+        use_keyboard_interrupt = False
     
     producer_thread = threading.Thread(
         target=audio_producer,
@@ -223,16 +234,25 @@ def main_loop() -> None:
     logger.info("Audio processing started. Press Ctrl+C to stop.")
     
     try:
-        while True:
-            time.sleep(1)
+        if use_keyboard_interrupt:
+            # Wait for KeyboardInterrupt signal (production mode)
+            while True:
+                time.sleep(1)
+        else:
+            # Wait for stop_event signal (test mode)
+            while not stop_event.is_set():
+                time.sleep(0.1)
     except KeyboardInterrupt:
         logger.info("Shutting down...")
         stop_event.set()
-        producer_thread.join(timeout=2)
-        consumer_thread.join(timeout=2)
-        audio_service.close()
-        link_simulator.close()
-        logger.info("Shutdown complete.")
+    
+    # Cleanup
+    stop_event.set()
+    producer_thread.join(timeout=2)
+    consumer_thread.join(timeout=2)
+    audio_service.close()
+    link_simulator.close()
+    logger.info("Shutdown complete.")
 
 
 if __name__ == "__main__":

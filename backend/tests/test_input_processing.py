@@ -68,32 +68,8 @@ def generate_audio_chunk(chunk_size=512, sample_rate=44100):
     return wave
 
 
-@pytest.fixture
-def mock_pyaudio():
-    """Mock PyAudio instance that returns bytes from streams."""
-    mock_pa = MagicMock()
-    
-    # Mock input stream that returns bytes
-    mock_input_stream = MagicMock()
-    # Return bytes representing int16 samples (CHUNK_SIZE * 2 bytes for int16)
-    mock_input_stream.read.return_value = b'\x00' * (512 * 2)  # 512 samples * 2 bytes
-    
-    # Mock output stream
-    mock_output_stream = MagicMock()
-    
-    # Mock PyAudio.open() to return streams
-    def open_stream(format=None, channels=None, rate=None, input=False, output=False, frames_per_buffer=None):
-        if input:
-            return mock_input_stream
-        elif output:
-            return mock_output_stream
-        return MagicMock()
-    
-    mock_pa.open.side_effect = open_stream
-    mock_pa.PyAudio.return_value = mock_pa
-    
-    return mock_pa, mock_input_stream, mock_output_stream
-
+# Note: mock_pyaudio fixture removed - tests use @patch('backend.services.audio_io.pyaudio') directly
+# The global mock_audio_service fixture from conftest.py handles AudioService mocking for other tests
 
 @pytest.fixture
 def mock_whisper_model():

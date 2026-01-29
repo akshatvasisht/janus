@@ -80,13 +80,18 @@ def playback_worker(
             playback_queue.task_done()
 
 
-def receiver_loop() -> None:
+def receiver_loop(stop_event: threading.Event | None = None) -> None:
     """
     Main receiver loop entry point.
     
     Listens for incoming packets, deserializes JanusPackets, synthesizes audio,
     and plays it through the audio service. Supports both TCP and UDP protocols.
     Configuration is loaded from environment variables.
+    
+    Args:
+        stop_event: Optional threading event to signal shutdown. If None, creates
+                   an internal event and waits for KeyboardInterrupt. If provided,
+                   exits when the event is set.
     
     Returns:
         None
@@ -122,7 +127,13 @@ def receiver_loop() -> None:
         logger.info(f"Listening for Transmissions on UDP port {receiver_port}...")
     
     playback_queue = queue.Queue(maxsize=100)
-    stop_event = threading.Event()
+    
+    # Use provided stop_event or create internal one
+    if stop_event is None:
+        stop_event = threading.Event()
+        use_keyboard_interrupt = True
+    else:
+        use_keyboard_interrupt = False
     
     playback_thread = threading.Thread(
         target=playback_worker,
@@ -133,6 +144,10 @@ def receiver_loop() -> None:
 
     try:
         while True:
+            # Exit if stop_event is set (test mode)
+            if not use_keyboard_interrupt and stop_event.is_set():
+                break
+                
             try:
                 if use_tcp:
                     length_bytes = recv_exact(sock, 4)
@@ -146,7 +161,12 @@ def receiver_loop() -> None:
                         logger.info("Connection closed while reading packet")
                         break
                 else:
-                    data, addr = sock.recvfrom(4096)
+                    # Set timeout for UDP to allow periodic stop_event checking
+                    sock.settimeout(0.5)
+                    try:
+                        data, addr = sock.recvfrom(4096)
+                    except socket.timeout:
+                        continue
 
                 try:
                     packet = JanusPacket.deserialize(data)
