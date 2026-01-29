@@ -1,25 +1,16 @@
 import time
-from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.api.types import EmotionOverride
 from backend.common import engine_state
 from backend.server import app
 
 client = TestClient(app)
 
-@pytest.fixture(autouse=True)
-def mock_hardware():
-    """Mock AudioService to prevent hardware initialization errors during tests"""
-    with patch('backend.server.AudioService') as mock_audio_service:
-        mock_audio_service.return_value = MagicMock()
-        yield mock_audio_service
-
-@pytest.fixture(autouse=True)
-def setup_engine_state():
-    """Reset engine state queues before each test to prevent loop binding errors"""
-    engine_state.reset_queues()
+# Note: mock_audio_service and reset_engine_state fixtures are now provided
+# globally by backend/tests/conftest.py, so no need for local fixtures here.
 
 def test_health_check():
     response = client.get("/api/health")
@@ -52,7 +43,7 @@ def test_websocket_control_flow():
 def test_websocket_partial_update():
     # Reset state
     engine_state.control_state.is_recording = False
-    engine_state.control_state.emotion_override = "auto"
+    engine_state.control_state.emotion_override = EmotionOverride.AUTO
 
     with client.websocket_connect("/ws/janus") as websocket:
         # Send partial update (only emotion_override)
@@ -61,8 +52,11 @@ def test_websocket_partial_update():
             "emotion_override": "panicked"
         })
 
+        # Wait for async message processing to complete
+        time.sleep(0.1)
+
         # Verify only target field changed
-        assert engine_state.control_state.emotion_override == "panicked"
+        assert engine_state.control_state.emotion_override == EmotionOverride.PANICKED
         # Should remain False
         assert engine_state.control_state.is_recording is False
 
