@@ -1,30 +1,36 @@
+<p align="center">
+  <img 
+    width="400" 
+    height="200" 
+    alt="Janus logo final - Copy" 
+    src="https://wsrv.nl/?url=github.com/user-attachments/assets/e9e57755-7e98-4b4b-b75f-d8040d064280&w=400&h=200&fit=cover" 
+  />
+</p>
 
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?logo=fastapi&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-2.0-EE4C2C?logo=pytorch&logoColor=white)
+![Whisper](https://img.shields.io/badge/AI-Faster--Whisper-violet)
+![MsgPack](https://img.shields.io/badge/Protocol-MessagePack-informational)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Event](https://img.shields.io/badge/Submission-MadHacks%202025-FFD700)
 
-<img width="1024" height="510" alt="Janus logo final - Copy" src="https://github.com/user-attachments/assets/e9e57755-7e98-4b4b-b75f-d8040d064280" />
-
-# Janus - Real-Time Semantic Audio Codec
-
-Submission for MadHacks 2025
-
-## Overview
-
-Janus is a real-time semantic audio codec system designed to optimize bandwidth by transmitting semantic meaning rather than raw audio waveforms. Instead of sending compressed audio data, Janus converts speech to text, extracts prosodic metadata (pitch and energy), and reconstructs the voice on the receiver side using generative text-to-speech synthesis.
-
-This approach enables high-quality voice communication over extremely constrained network connections (as low as 300bps), then reconstructed into natural-sounding speech using modern generative TTS models.
+Janus is a real-time semantic audio codec system designed to optimize bandwidth by transmitting semantic meaning rather than raw audio waveforms. Instead of sending compressed audio data, Janus converts speech to text, extracts prosodic metadata (pitch and energy), and reconstructs the voice on the receiver side using generative text-to-speech synthesis. This approach enables high-quality voice communication over extremely constrained network connections (as low as 300bps), where it is reconstructed into natural-sounding speech using modern generative TTS models.
 
 ### Research Inspiration
 
-Janus is inspired by SemantiCodec (Zhang et al., 2024), a state-of-the-art semantic codec that demonstrated the viability of sub-kbps speech transmission by encoding meaning and prosody instead of waveforms. Janus extends this paradigm into a real-time system by leveraging Faster-Whisper for speech-to-text, Silero VAD for precise speech gating, Aubio for pitch/energy extraction, MessagePack for ultra-compact serialization, and FishAudio’s generative TTS in an end-to-end STT → semantic-packet → TTS codec pipeline.
+Janus is an implementation of concepts introduced in **[SemantiCodec (Liu et al., 2024)](https://arxiv.org/abs/2405.00233)**, a state-of-the-art semantic codec that demonstrated the viability of sub-kbps speech transmission. While the original paper focuses on diffusion-based reconstruction, Janus adapts this for real-time latency by substituting the diffusion decoder with a faster LLM-based instruction pipeline. 
 
 ### How Janus Works
-1. STT Layer (Faster-Whisper)
+Janus extends into a real-time system by leveraging an end-to-end STT → semantic-packet → TTS pipeline:
+1. **STT Layer (Faster-Whisper)**
    Extracts text and timestamps from live speech.
-2. Prosody Layer (Aubio)
-   Capture pitch and energy to preserve tone
-3. Compression Layer (MessagePack)
-   Packages text + prosody into ~300 bps payloads
-4. Voice Reconstruction Layer (Fishaudio TTS)
-   Generates natural speech using the sender’s message and extracted prosody.
+2. **Prosody Layer (Aubio)**
+   Captures pitch and energy to preserve vocal tone.
+3. **Compression Layer (MessagePack)**
+   Packages text and prosody into ~300 bps payloads.
+4. **Reconstruction Layer (FishAudio TTS)**
+   Generates natural speech using the received semantic instructions.
 
 <img width="1897" height="216" alt="image" src="https://github.com/user-attachments/assets/db7cb35e-ae87-4fb7-b0a0-35903f7572a8" />
 
@@ -32,7 +38,7 @@ Janus is inspired by SemantiCodec (Zhang et al., 2024), a state-of-the-art seman
 
 ## Impact
 
-Janus achieves significant efficiency gains through semantic compression:
+Traditional codecs bind audio quality to bandwidth: less data means worse sound. Janus sidesteps this by transmitting text and prosody instructions instead of audio. This allows for crystal-clear voice reconstruction at 300bps, regardless of network conditions.
 
 ### Performance
 
@@ -74,7 +80,7 @@ Janus achieves significant efficiency gains through semantic compression:
 
 ## Documentation
 
-- **[SETUP.md](SETUP.md)**: Environment setup, installation, and start instructions
+- **[SETUP.md](docs/SETUP.md)**: Environment setup, installation, and start instructions
 - **[ARCHITECTURE.md](docs/ARCHITECTURE.md)**: Architecture, tech stack, and design decisions
 - **[API.md](docs/API.md)**: WebSocket and REST API reference
 - **[TESTING.md](docs/TESTING.md)**: Testing guidelines
