@@ -48,7 +48,9 @@ MadHacks/
 │   │   ├── sender_main.py          # CLI tool for direct network testing (standalone)
 │   │   └── receiver_main.py        # CLI tool for direct network testing (standalone)
 │   ├── tests/                      # Test suite
+│   │   ├── conftest.py             # Pytest fixtures
 │   │   ├── test_api_flow.py
+│   │   ├── test_e2e_local.py       # End-to-end local pipeline tests
 │   │   ├── test_engine.py
 │   │   ├── test_input_processing.py
 │   │   ├── test_synthesis.py
@@ -64,7 +66,9 @@ MadHacks/
 │   ├── app/
 │   │   ├── page.tsx                # Main user interface (PTT controls)
 │   │   ├── layout.tsx              # Root layout
-│   │   └── globals.css             # Global styles
+│   │   ├── globals.css             # Global styles
+│   │   └── telemetry/
+│   │       └── page.tsx            # Bandwidth visualization and packet log
 │   ├── components/
 │   │   ├── PushToTalk.tsx          # Main interaction button (hold-to-record)
 │   │   ├── ModeToggle.tsx          # Transmission mode selector
@@ -73,23 +77,30 @@ MadHacks/
 │   │   ├── ConversationPanel.tsx   # Transcript display
 │   │   ├── HeaderBar.tsx           # Status header
 │   │   ├── QuickStats.tsx          # Packet statistics display
-│   │   └── VoiceCloner.tsx         # Voice reference upload interface
+│   │   ├── VoiceCloner.tsx         # Voice reference upload interface
+│   │   ├── NetworkLog.tsx          # Packet log for telemetry
+│   │   ├── SectionHeader.tsx       # Section headers
+│   │   ├── TelemetryGraph.tsx      # Real-time packet/bandwidth chart
+│   │   └── ui/                     # Shared UI primitives (e.g. card, button)
 │   ├── hooks/
 │   │   ├── useJanusSocket.ts       # Main socket hook (mode conversion)
-│   │   └── useJanusWebSocket.ts    # WebSocket connection management
-│   └── types/
-│       └── janus.ts                # TypeScript type definitions
+│   │   ├── useJanusWebSocket.ts    # WebSocket connection management
+│   │   ├── useBackendHealth.ts     # Backend health check
+│   │   └── useDebounce.ts          # Debounce utility
+│   ├── providers/                  # React context providers
+│   ├── lib/                        # Utilities (e.g. cn)
+│   ├── types/
+│   │   └── janus.ts                # TypeScript type definitions
+│   └── assets/                     # Static assets (e.g. logo)
 │
 ├── docs/                           # Documentation directory
 │   ├── API.md                      # API documentation
+│   ├── ARCHITECTURE.md             # This file
+│   ├── SETUP.md                    # Setup instructions
 │   ├── TESTING.md                  # Testing guidelines
-│   ├── STYLE.md                    # Coding standards
-│   └── projectdocs.md              # This file
+│   └── STYLE.md                    # Coding standards
 ├── README.md                       # Project overview
-└── SETUP.md                        # Setup instructions
-```
-
-**Note:** The `/telemetry` page is planned for future implementation to provide real-time bandwidth visualization and packet logging.
+└── LICENSE
 
 ---
 
@@ -99,7 +110,7 @@ MadHacks/
 | ---------------------- | ------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | **Frontend Framework** | **React (via Next.js 14)** | User interface (Dashboard, Controls, Transcript Display) | App Router enables rapid development |
 | **Styling**            | **Tailwind CSS**          | UI styling (Dark mode, responsive design)            | Rapid prototyping without custom CSS                                      |
-| **Visualization**      | **Recharts**              | Real-time data visualization (planned for telemetry)      | Simple, composable React charts                                                  |
+| **Visualization**      | **Recharts**              | Real-time bandwidth and packet visualization (/telemetry)  | Simple, composable React charts (TelemetryGraph, NetworkLog)                    |
 | **Backend API**        | **FastAPI**               | REST and WebSocket server                              | Async support for real-time streaming                               |
 | **Speech-to-Text**     | **faster-whisper**        | Local speech transcription (Int8 quantized)            | Optimized Whisper runs efficiently on CPU                        |
 | **Voice Detection**    | **silero-vad**            | Voice activity detection (gatekeeper)                   | Lightweight and low-latency                            |

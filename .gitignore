@@ -39,3 +39,7 @@ logs/
 
 # Generated assets
 **/*.wav
+
+# Cache and Agent Context
+.hf/
+agentcontext/

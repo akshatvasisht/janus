@@ -13,11 +13,13 @@ client = TestClient(app)
 # globally by backend/tests/conftest.py, so no need for local fixtures here.
 
 def test_health_check():
+    """Verify /api/health returns 200 and status ok."""
     response = client.get("/api/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
 def test_websocket_control_flow():
+    """Verify WebSocket control messages update engine state (mode, is_streaming)."""
     # Reset state before test
     engine_state.control_state.is_streaming = False
     engine_state.control_state.mode = "semantic"
@@ -41,6 +43,7 @@ def test_websocket_control_flow():
         assert engine_state.control_state.mode == "text_only"
 
 def test_websocket_partial_update():
+    """Verify partial control updates change only the specified fields."""
     # Reset state
     engine_state.control_state.is_recording = False
     engine_state.control_state.emotion_override = EmotionOverride.AUTO

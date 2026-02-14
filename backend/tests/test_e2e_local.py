@@ -5,7 +5,6 @@ Tests the complete Sender→Receiver pipeline in memory without physical hardwar
 Validates that multiple conversation turns work correctly, catching deadlock bugs.
 """
 
-import os
 import struct
 import threading
 import time
