@@ -6,6 +6,7 @@ import socket
 import struct
 import threading
 import time
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
@@ -435,8 +436,9 @@ async def smart_ear_loop(
     producer_thread.start()
 
     audio_buffer = []
+    pre_roll_buffer = deque(maxlen=10)
     silence_counter = 0
-    SILENCE_THRESHOLD_CHUNKS = 16  # ~500ms
+    SILENCE_THRESHOLD_CHUNKS = 15  # ~500ms
     previous_hold_state = False
 
     try:
@@ -461,6 +463,7 @@ async def smart_ear_loop(
 
             # Transition: PTT just released -> process buffered audio and stop talking
             if previous_hold_state and not is_recording_hold:
+                logger.info("PTT Released - triggering processing.")
                 trigger_processing = True
                 previous_hold_state = False
                 control_state.is_talking = False
@@ -468,6 +471,10 @@ async def smart_ear_loop(
             elif is_streaming_mode:
                 is_speech = vad_model.is_speech(chunk)
                 if is_speech:
+                    if len(audio_buffer) == 0:
+                        logger.info("Speech detected - start buffering (with pre-roll).")
+                        audio_buffer.extend(list(pre_roll_buffer))
+                    
                     control_state.is_talking = True
                     audio_buffer.append(chunk)
                     silence_counter = 0
@@ -475,6 +482,8 @@ async def smart_ear_loop(
                     silence_counter += 1
                     if len(audio_buffer) > 0:
                         audio_buffer.append(chunk)
+                    else:
+                        pre_roll_buffer.append(chunk)
 
                     if silence_counter > SILENCE_THRESHOLD_CHUNKS:
                         trigger_processing = True
@@ -486,7 +495,15 @@ async def smart_ear_loop(
 
             if trigger_processing and len(audio_buffer) > 0:
                 combined_audio = np.concatenate(audio_buffer)
+                audio_buffer = []
+                silence_counter = 0
 
+                if len(combined_audio) < 1536 * 6:
+                    logger.info(f"Skipping short audio buffer ({len(combined_audio)} samples)")
+                    continue
+
+                duration_sec = len(combined_audio) / audio_service.SAMPLE_RATE
+                logger.info(f"Processing audio buffer ({len(combined_audio)} samples, {duration_sec:.2f}s)...")
                 def process_audio_blocking(audio_data):
                     t_text = ""
                     t_meta = {}
