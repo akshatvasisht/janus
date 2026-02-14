@@ -1,11 +1,25 @@
-"""
-Module: Prosody Extraction Service
-Purpose: Uses Aubio to extract the 'Emotional Metadata' (Pitch and Energy)
-         from the audio signal. This allows the receiver to 'hallucinate' the tone.
+"""Prosody extraction service.
+
+Extracts lightweight prosody metadata (pitch and energy) from audio buffers. The
+returned tags are designed for downstream conditioning (e.g., emotion prompting),
+not high-fidelity acoustic analysis.
 """
 
-import aubio
+import logging
+import warnings
+from typing import Any
+
 import numpy as np
+
+try:
+    import aubio  # type: ignore
+except ModuleNotFoundError as exc:
+    aubio = None  # type: ignore
+    _AUBIO_IMPORT_ERROR = exc
+
+
+logger = logging.getLogger(__name__)
+
 
 class ProsodyExtractor:
     def __init__(self, sample_rate: int = 48000, hop_size: int = 512) -> None:
@@ -29,11 +43,19 @@ class ProsodyExtractor:
         self.hop_size = hop_size
         
         # Create pitch detector (using 'yin' method)
-        self.pitch_detector = aubio.pitch('yin', 4096, hop_size, sample_rate)
-        self.pitch_detector.set_unit('Hz')
-        self.pitch_detector.set_tolerance(0.8)
+        self.pitch_detector = None
+        if aubio is None:
+            warnings.warn(
+                "aubio is not installed; prosody pitch extraction will be disabled. "
+                f"Import error: {_AUBIO_IMPORT_ERROR}"
+            )
+            logger.warning("aubio import error: %s", _AUBIO_IMPORT_ERROR)
+        else:
+            self.pitch_detector = aubio.pitch('yin', 4096, hop_size, sample_rate)
+            self.pitch_detector.set_unit('Hz')
+            self.pitch_detector.set_tolerance(0.8)
 
-    def analyze_buffer(self, audio_buffer: np.ndarray) -> dict[str, str]:
+    def analyze_buffer(self, audio_buffer: Any) -> dict[str, str]:
         """
         Analyzes a full phrase buffer to extract average prosody metrics.
 
@@ -49,13 +71,17 @@ class ProsodyExtractor:
         Returns:
             dict[str, str]: Metadata dictionary with keys:
                 - 'energy': Volume level tag ('Quiet', 'Normal', or 'Loud')
-                - 'pitch': Pitch level tag ('Deep', 'Normal', or 'High')
+                - 'pitch': Pitch level tag ('Low', 'Normal', or 'High')
                 
                 Pitch values of 0.0 (silence/unvoiced segments) are filtered out
                 before calculating the average. If no voiced segments are detected,
                 pitch defaults to 'Normal'.
         """
-        if isinstance(audio_buffer, list):
+        if (
+            isinstance(audio_buffer, list)
+            and audio_buffer
+            and isinstance(audio_buffer[0], np.ndarray)
+        ):
             audio_buffer = np.concatenate(audio_buffer)
         
         if not isinstance(audio_buffer, np.ndarray):
@@ -74,23 +100,24 @@ class ProsodyExtractor:
             energy_tag = 'Loud'
         
         pitch_values = []
-        total_samples = len(audio_buffer)
-        for i in range(0, total_samples, self.hop_size):
-            chunk = audio_buffer[i:i + self.hop_size]
-            
-            if len(chunk) < self.hop_size:
-                chunk = np.pad(chunk, (0, self.hop_size - len(chunk)), mode='constant')
-            
-            pitch = self.pitch_detector(chunk)[0]
-            
-            if pitch > 0.0:
-                pitch_values.append(pitch)
+        if self.pitch_detector is not None:
+            total_samples = len(audio_buffer)
+            for i in range(0, total_samples, self.hop_size):
+                chunk = audio_buffer[i:i + self.hop_size]
+                
+                if len(chunk) < self.hop_size:
+                    chunk = np.pad(chunk, (0, self.hop_size - len(chunk)), mode='constant')
+                
+                pitch = self.pitch_detector(chunk)[0]
+                
+                if pitch > 0.0:
+                    pitch_values.append(pitch)
         
         if len(pitch_values) > 0:
             avg_pitch = np.mean(pitch_values)
             
             if avg_pitch < 120:
-                pitch_tag = 'Deep'
+                pitch_tag = 'Low'
             elif avg_pitch < 200:
                 pitch_tag = 'Normal'
             else:

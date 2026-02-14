@@ -1,50 +1,65 @@
-"""
-Module: Audio Input/Output Service
-Purpose: Handles the raw interface with the microphone and speakers using PyAudio.
-         It provides a stream for reading raw bytes and converting them to numpy arrays
-         which are required for AI processing.
+"""Audio input/output service.
+
+This module provides a small wrapper around PyAudio for microphone capture and speaker
+playback. When PyAudio is unavailable (or hardware initialization fails), the service
+falls back to a silent mode that returns zero-filled buffers and ignores playback.
 """
 
 import logging
 import time
 import warnings
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
-import pyaudio
+try:
+    import pyaudio  # type: ignore
+except ModuleNotFoundError as exc:
+    pyaudio = None  # type: ignore
+    _PYAUDIO_IMPORT_ERROR = exc
 
 logger = logging.getLogger(__name__)
 
+
 class AudioService:
-    def __init__(self):
+    def __init__(self) -> None:
         """
-        Initialize the Audio Service.
-        
-        Sets up PyAudio instance and opens input/output streams for microphone capture
-        and speaker playback. Configures audio parameters (44100Hz sample rate, 512 sample
-        chunk size, mono channel) required for AI processing pipelines.
+        Initialize microphone capture and speaker playback.
+
+        The service attempts to open both input and output streams. If PyAudio is not
+        installed or the host cannot provide audio devices, the service operates in a
+        silent mode suitable for tests and headless deployments.
         """
         # Audio configuration constants
         self.SAMPLE_RATE = 48000
         self.CHUNK_SIZE = 1536
         self.CHANNELS = 1
-        self.FORMAT = pyaudio.paInt16
+        self.FORMAT = None if pyaudio is None else pyaudio.paInt16
         
         # Safety flag for hardware availability
         self._pyaudio_available = False
         
         # Initialize to None to ensure cleanup works even if init fails partially
-        self.pyaudio_instance = None
+        self.pyaudio_instance: Optional["pyaudio.PyAudio"] = None  # type: ignore[name-defined]
         self.input_stream = None
         self.output_stream = None
+
+        if pyaudio is None:
+            warnings.warn(
+                "PyAudio is not installed; AudioService will run in Silent/Mock mode. "
+                f"Import error: {_PYAUDIO_IMPORT_ERROR}"
+            )
+            logger.error("PyAudio import error: %s", _PYAUDIO_IMPORT_ERROR)
+            return
         
         try:
             # Initialize PyAudio
             self.pyaudio_instance = pyaudio.PyAudio()
             logger.info("PyAudio instance initialized successfully.")
-        except Exception as e:
-            warnings.warn(f"Failed to initialize PyAudio: {e}. Running in Silent/Mock mode.")
-            logger.error(f"PyAudio initialization error: {e}")
+        except Exception as exc:
+            warnings.warn(
+                f"Failed to initialize PyAudio: {exc}. Running in silent mode."
+            )
+            logger.error("PyAudio initialization error: %s", exc)
             self.pyaudio_instance = None
             return
         
@@ -58,9 +73,11 @@ class AudioService:
                 frames_per_buffer=self.CHUNK_SIZE
             )
             logger.info("Audio input stream opened successfully.")
-        except Exception as e:
-            warnings.warn(f"Failed to open audio input stream: {e}. Input will be disabled.")
-            logger.error(f"Audio input stream error: {e}")
+        except Exception as exc:
+            warnings.warn(
+                f"Failed to open audio input stream: {exc}. Input will be disabled."
+            )
+            logger.error("Audio input stream error: %s", exc)
             # Ensure stream is None if opening failed
             if self.input_stream is not None:
                 try:
@@ -80,9 +97,11 @@ class AudioService:
                 frames_per_buffer=self.CHUNK_SIZE
             )
             logger.info("Audio output stream opened successfully.")
-        except Exception as e:
-            warnings.warn(f"Failed to open audio output stream: {e}. Output will be disabled.")
-            logger.error(f"Audio output stream error: {e}")
+        except Exception as exc:
+            warnings.warn(
+                f"Failed to open audio output stream: {exc}. Output will be disabled."
+            )
+            logger.error("Audio output stream error: %s", exc)
             # Ensure stream is None if opening failed
             if self.output_stream is not None:
                 try:
@@ -106,10 +125,6 @@ class AudioService:
             np.ndarray: A float32 array of audio samples normalized between -1.0 and 1.0.
                 Returns a zero-filled array if hardware is unavailable or on overflow.
                 This format is required by Silero VAD and Whisper processing pipelines.
-        
-        Raises:
-            IOError: If the input stream overflows (handled internally by logging
-                and returning zero-filled data).
         """
         if not self._pyaudio_available or self.input_stream is None:
             # Simulate real-time capture duration to avoid hammering CPU in Mock mode
@@ -118,9 +133,9 @@ class AudioService:
         
         try:
             raw_data = self.input_stream.read(self.CHUNK_SIZE, exception_on_overflow=False)
-        except IOError as e:
-            logger.warning(f"Audio input overflow: {e}")
-            raw_data = b'\x00' * (self.CHUNK_SIZE * 2)
+        except IOError as exc:
+            logger.warning("Audio input overflow: %s", exc)
+            raw_data = b"\x00" * (self.CHUNK_SIZE * 2)
         
         audio_int16 = np.frombuffer(raw_data, dtype=np.int16)
         audio_float32 = audio_int16.astype(np.float32) / 32768.0
@@ -145,6 +160,9 @@ class AudioService:
         """
         if not self._pyaudio_available or self.output_stream is None:
             return
+
+        if audio_data is None:
+            return
         
         if isinstance(audio_data, np.ndarray):
             if audio_data.dtype == np.float32:
@@ -165,9 +183,6 @@ class AudioService:
         Stops and closes all audio streams (input and output), then terminates
         the PyAudio instance. Errors during cleanup are silently ignored to ensure
         resources are released even if streams are in an invalid state.
-        
-        Returns:
-            None
         """
         if self.input_stream is not None:
             try:

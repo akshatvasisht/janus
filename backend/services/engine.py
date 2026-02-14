@@ -19,6 +19,7 @@ from .audio_io import AudioService
 from .link_simulator import LinkSimulator
 from .prosody import ProsodyExtractor
 from .synthesizer import Synthesizer
+from .text_processing import SentenceBuffer, iter_text_tokens
 from .transcriber import Transcriber
 from .vad import VoiceActivityDetector
 
@@ -153,16 +154,11 @@ def receiver_loop(
     Returns:
         None
     """
-    api_key = os.getenv("FISH_AUDIO_API_KEY")
-    if not api_key:
-        logger.error("FISH_AUDIO_API_KEY environment variable not set")
-        return
-    
     receiver_port = int(os.getenv("RECEIVER_PORT", "5005"))
     reference_audio_path = os.getenv("REFERENCE_AUDIO_PATH", None)
     
     try:
-        synthesizer = Synthesizer(api_key=api_key, reference_audio_path=reference_audio_path)
+        synthesizer = Synthesizer(reference_audio_path=reference_audio_path)
     except Exception as e:
         logger.error(f"Failed to initialize Synthesizer: {e}")
         return
@@ -277,15 +273,48 @@ def receiver_loop(
                       f"Pitch={packet.prosody.get('pitch', 'N/A')} -> Prompt: [{emotion_tag}]")
 
                 try:
-                    audio_bytes = synthesizer.synthesize(packet)
-                except Exception as e:
-                    logger.error(f"Synthesis error: {e}")
-                    continue
+                    # Sentence-level buffering for text modes; Morse is stateless.
+                    if packet.mode in (ProtocolJanusMode.SEMANTIC_VOICE, ProtocolJanusMode.TEXT_ONLY):
+                        buffer = SentenceBuffer()
+                        sentences: list[str] = []
+                        for token in iter_text_tokens(packet.text):
+                            sentence = buffer.add_token(token)
+                            if sentence:
+                                sentences.append(sentence)
+                        flushed = buffer.flush()
+                        if flushed:
+                            sentences.append(flushed)
 
-                try:
-                    playback_queue.put(audio_bytes, timeout=0.1)
-                except queue.Full:
-                    logger.warning("Warning: Playback queue full, skipping audio chunk")
+                        if not sentences and not packet.text:
+                            continue
+                        if not sentences and packet.text:
+                            sentences = [packet.text]
+
+                        for sentence_text in sentences:
+                            sub_packet = JanusPacket(
+                                text=sentence_text,
+                                mode=packet.mode,
+                                prosody=packet.prosody,
+                                override_emotion=packet.override_emotion,
+                                timestamp=packet.timestamp,
+                            )
+                            try:
+                                audio_bytes = synthesizer.synthesize(sub_packet)
+                            except Exception as e:
+                                logger.error(f"Synthesis error: {e}")
+                                continue
+                            try:
+                                playback_queue.put(audio_bytes, timeout=0.1)
+                            except queue.Full:
+                                logger.warning("Warning: Playback queue full, skipping audio chunk")
+                    else:
+                        audio_bytes = synthesizer.synthesize(packet)
+                        try:
+                            playback_queue.put(audio_bytes, timeout=0.1)
+                        except queue.Full:
+                            logger.warning("Warning: Playback queue full, skipping audio chunk")
+                except Exception as e:
+                    logger.error(f"Receiver synthesis pipeline error: {e}")
 
             except socket.timeout:
                 continue
