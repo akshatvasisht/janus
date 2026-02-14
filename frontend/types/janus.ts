@@ -61,3 +61,10 @@ export type VoiceVerificationResponse = {
   status: VoiceVerificationStatus;
   transcript?: string;
 };
+export type ControlStateMessage = {
+  type: 'control_state';
+  is_streaming: boolean;
+  is_recording: boolean;
+  mode: JanusMode;
+  emotion_override: EmotionOverride;
+};

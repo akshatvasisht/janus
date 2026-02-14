@@ -11,7 +11,7 @@ import json
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from ..common import engine_state
-from .types import ControlMessage, JanusOutboundMessage
+from .types import ControlMessage, JanusOutboundMessage, ControlStateMessage
 
 router = APIRouter()
 
@@ -31,6 +31,17 @@ async def janus_ws(websocket: WebSocket) -> None:
         None
     """
     await websocket.accept()
+
+    # Send initial state to sync UI
+    state = engine_state.control_state
+    initial_state = ControlStateMessage(
+        type="control_state",
+        is_streaming=state.is_streaming,
+        is_recording=state.is_recording,
+        mode=state.mode,
+        emotion_override=state.emotion_override,
+    )
+    await _send_event(websocket, initial_state)
 
     recv_task = asyncio.create_task(_recv_loop(websocket))
     send_task = asyncio.create_task(_send_loop(websocket))
@@ -56,8 +67,20 @@ async def janus_ws(websocket: WebSocket) -> None:
     except Exception as e:
         print(f"WebSocket handler error: {e}")
     finally:
+        _reset_control_state()
         recv_task.cancel()
         send_task.cancel()
+
+
+def _reset_control_state() -> None:
+    """
+    Reset engine_state.control_state to idle values.
+    """
+    state = engine_state.control_state
+    state.is_streaming = False
+    state.is_recording = False
+    state.is_talking = False
+    print(f"Control State Reset on Disconnect: {state}")
 
 
 async def _recv_loop(websocket: WebSocket) -> None:

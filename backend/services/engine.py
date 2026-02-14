@@ -469,10 +469,13 @@ async def smart_ear_loop(
                 control_state.is_talking = False
 
             elif is_streaming_mode:
-                is_speech = vad_model.is_speech(chunk)
+                # Bypass VAD gating for Morse and Text modes to avoid blocking non-semantic transmissions
+                is_non_vad_mode = control_state.mode in [JanusMode.MORSE, JanusMode.TEXT_ONLY]
+                is_speech = vad_model.is_speech(chunk) or is_non_vad_mode
+
                 if is_speech:
                     if len(audio_buffer) == 0:
-                        logger.info("Speech detected - start buffering (with pre-roll).")
+                        logger.info(f"Transmission started (mode={control_state.mode}, speech={not is_non_vad_mode})")
                         audio_buffer.extend(list(pre_roll_buffer))
                     
                     control_state.is_talking = True

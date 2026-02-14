@@ -54,5 +54,15 @@ class PacketSummaryMessage(BaseModel):
     emotion: Optional[str] = None
     snippet: Optional[str] = None
 
+class ControlStateMessage(BaseModel):
+    """
+    Current full state of the engine, sent to synchronise frontend.
+    """
+    type: Literal["control_state"]
+    is_streaming: bool
+    is_recording: bool
+    mode: JanusMode
+    emotion_override: EmotionOverride
+
 # Union type for outbound messages
-JanusOutboundMessage = TranscriptMessage | PacketSummaryMessage
+JanusOutboundMessage = TranscriptMessage | PacketSummaryMessage | ControlStateMessage
