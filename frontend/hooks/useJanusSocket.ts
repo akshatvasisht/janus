@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useState } from 'react';
-import { useJanusWebSocket } from './useJanusWebSocket';
+import { useCallback, useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useJanusWebSocket, queryKeys } from './useJanusWebSocket';
 import type {
   JanusMode,
   EmotionOverride,
@@ -9,6 +10,7 @@ import type {
   PacketSummaryMessage,
   ConnectionStatus,
   ControlStateUpdate,
+  ControlStateMessage,
 } from '@/types/janus';
 export type JanusSocketState = {
   status: ConnectionStatus;
@@ -41,7 +43,23 @@ export function useJanusSocket(): JanusSocketState {
     lastPacket,
     sendControl: sendControlRaw,
     isConnected,
+    lastError: wsError,
   } = useJanusWebSocket();
+
+  const { data: remoteState } = useQuery<ControlStateMessage | null>({
+    queryKey: queryKeys.controlState,
+    queryFn: async () => null,
+    enabled: false,
+  });
+
+  useEffect(() => {
+    if (remoteState) {
+      setMode(remoteState.mode);
+      setEmotionOverride(remoteState.emotion_override);
+      setIsRecording(remoteState.is_recording);
+      setIsStreaming(remoteState.is_streaming);
+    }
+  }, [remoteState]);
 
   const sendControl = useCallback(
     (partial: ControlStateUpdate) => {
@@ -78,7 +96,7 @@ export function useJanusSocket(): JanusSocketState {
     isStreaming,
     transcripts,
     lastPacketSummary: lastPacket || undefined,
-    lastError: connectionStatus === 'disconnected' ? 'Connection lost' : null,
+    lastError: wsError || (connectionStatus === 'disconnected' ? 'Connection lost' : null),
     sendControl,
   };
 }
