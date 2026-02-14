@@ -152,6 +152,14 @@ Both machines can now send and receive audio packets across the internet. The sy
 - Fish Audio SDK requires a valid API key with sufficient credits
 - The backend server must be running before starting the frontend for WebSocket connections
 
+## Audio Utilities
+
+The `backend/scripts/` directory contains helper utilities for hardware and model verification:
+
+- **`list_audio_devices.py`**: Lists all available PyAudio input and output devices. Use this to find the correct device index if you have multiple audio interfaces.
+- **`verify_audio_params.py`**: Verifies that the model's native sample rate matches the output playback rate. Use `--full` to load the model manager for a complete check.
+- **`sender_main.py`**: Test script for sending audio packets (requires a running backend receiver).
+
 ## Troubleshooting
 
 ### Audio Issues
