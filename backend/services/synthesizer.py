@@ -21,7 +21,7 @@ from ..common.protocol import JanusMode, JanusPacket
 logger = logging.getLogger(__name__)
 
 # Audio format constants
-SAMPLE_RATE = 44100  # Hz
+SAMPLE_RATE = 48000  # Hz
 MORSE_FREQUENCY = 800  # Hz for Morse code beeps
 
 class Synthesizer:
@@ -37,7 +37,7 @@ class Synthesizer:
         Args:
             api_key: Fish Audio API key for authentication.
             reference_audio_path: Optional path to reference audio file for
-                voice cloning. If None, uses default path 'backend/reference_audio.wav'.
+                voice cloning. If None, no reference audio is loaded.
                 The reference audio serves as the "Voice ID" for cloning.
         
         Returns:
@@ -47,17 +47,10 @@ class Synthesizer:
         
         self.reference_audio_bytes = None
         self._reference_audio_mtime = None
-        self._reference_audio_path = None
+        self._reference_audio_path = reference_audio_path
         
-        if reference_audio_path:
-            audio_path = reference_audio_path
-        else:
-            backend_dir = Path(__file__).parent.parent
-            default_path = backend_dir / "reference_audio.wav"
-            audio_path = str(default_path)
-        
-        self._reference_audio_path = audio_path
-        self._load_reference_audio(audio_path)
+        if self._reference_audio_path:
+            self._load_reference_audio(self._reference_audio_path)
         
         # Define Morse Code Dictionary (A=.-, B=-..., etc)
         self.morse_code_dict = {
