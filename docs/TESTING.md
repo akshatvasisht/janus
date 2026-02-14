@@ -17,6 +17,7 @@ Run specific test files:
 ```bash
 pytest backend/tests/test_api_flow.py
 pytest backend/tests/test_engine.py
+pytest backend/tests/test_e2e_local.py
 pytest backend/tests/test_input_processing.py
 ```
 
@@ -36,7 +37,9 @@ pytest backend/tests/ --cov=backend --cov-report=html
 
 Tests are organized in `backend/tests/` with the following structure:
 
+- `conftest.py`: Pytest fixtures (mock AudioService, reset engine state); applied automatically to all tests
 - `test_api_flow.py`: Tests for REST API endpoints and WebSocket communication
+- `test_e2e_local.py`: End-to-end local pipeline tests (sender→receiver in memory, no hardware)
 - `test_engine.py`: Tests for Smart Ear engine loop and receiver loop
 - `test_input_processing.py`: Tests for audio processing pipeline (VAD, transcription, prosody)
 - `test_synthesis.py`: Tests for voice synthesis functionality

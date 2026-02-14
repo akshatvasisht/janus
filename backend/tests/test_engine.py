@@ -1,5 +1,4 @@
 import queue
-import socket
 import threading
 from unittest.mock import MagicMock
 
@@ -11,7 +10,6 @@ from backend.services.engine import (
     apply_ducking_if_needed,
     playback_worker,
     recv_exact,
-    receiver_loop,
 )
 
 

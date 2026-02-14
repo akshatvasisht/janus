@@ -10,7 +10,6 @@ from unittest.mock import MagicMock, Mock, call, mock_open, patch
 import numpy as np
 import pytest
 from fishaudio import FishAudio
-from fishaudio.types import ReferenceAudio
 
 # Add project root to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))

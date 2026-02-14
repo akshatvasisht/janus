@@ -125,8 +125,8 @@ Janus is a real-time semantic audio codec system designed to optimize bandwidth 
 
 ## 5. File & Repository Standards
 * **README.md:** Must serve as the primary entry point for the project. It should contain the Project Overview, Architecture Summary, and setup instructions. It must not be left empty.
-* **docs/projectdocs.md:** Reserved for deep-dive architectural documentation, glossary, and specific design decisions. Located in the docs/ directory.
-* **docs/:** Directory containing detailed documentation (API.md, TESTING.md, STYLE.md, projectdocs.md).
+* **docs/ARCHITECTURE.md:** Reserved for deep-dive architectural documentation, glossary, and specific design decisions. Located in the docs/ directory.
+* **docs/:** Directory containing detailed documentation (API.md, ARCHITECTURE.md, SETUP.md, TESTING.md, STYLE.md).
 * **backend/scripts/:** Directory containing CLI utility scripts for testing and development.
 * **Code Comments:** Comments should focus on complex logic or "gotchas." Trivial logic (e.g., `i++ // increment i`) should not be commented.
 

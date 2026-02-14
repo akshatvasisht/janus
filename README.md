@@ -10,8 +10,12 @@
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?logo=fastapi&logoColor=white)
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.0-EE4C2C?logo=pytorch&logoColor=white)
-![Whisper](https://img.shields.io/badge/AI-Faster--Whisper-violet)
+![Whisper](https://img.shields.io/badge/STT-Faster--Whisper-violet)
+![TTS](https://img.shields.io/badge/TTS-Fish%20Audio-8B5CF6)
 ![MsgPack](https://img.shields.io/badge/Protocol-MessagePack-informational)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-15.0-black?logo=next.js&logoColor=white)
+![Tailwind](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?logo=tailwind-css&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Event](https://img.shields.io/badge/Submission-MadHacks%202025-FFD700)
 
