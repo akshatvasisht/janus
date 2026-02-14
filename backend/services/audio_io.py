@@ -6,6 +6,7 @@ Purpose: Handles the raw interface with the microphone and speakers using PyAudi
 """
 
 import logging
+import time
 import warnings
 from typing import Union
 
@@ -24,8 +25,8 @@ class AudioService:
         chunk size, mono channel) required for AI processing pipelines.
         """
         # Audio configuration constants
-        self.SAMPLE_RATE = 44100
-        self.CHUNK_SIZE = 512
+        self.SAMPLE_RATE = 48000
+        self.CHUNK_SIZE = 1536
         self.CHANNELS = 1
         self.FORMAT = pyaudio.paInt16
         
@@ -111,6 +112,8 @@ class AudioService:
                 and returning zero-filled data).
         """
         if not self._pyaudio_available or self.input_stream is None:
+            # Simulate real-time capture duration to avoid hammering CPU in Mock mode
+            time.sleep(self.CHUNK_SIZE / self.SAMPLE_RATE)
             return np.zeros(self.CHUNK_SIZE, dtype=np.float32)
         
         try:

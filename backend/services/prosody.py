@@ -8,7 +8,7 @@ import aubio
 import numpy as np
 
 class ProsodyExtractor:
-    def __init__(self, sample_rate: int = 44100, hop_size: int = 512) -> None:
+    def __init__(self, sample_rate: int = 48000, hop_size: int = 512) -> None:
         """
         Initialize Aubio analyzers.
         

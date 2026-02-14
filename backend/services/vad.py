@@ -8,7 +8,7 @@ import numpy as np
 import torch
 
 class VoiceActivityDetector:
-    def __init__(self, threshold: float = 0.5, sample_rate: int = 44100) -> None:
+    def __init__(self, threshold: float = 0.5, sample_rate: int = 48000) -> None:
         """
         Initialize the VAD Model.
         
@@ -49,9 +49,13 @@ class VoiceActivityDetector:
             bool: True if speech is detected (probability exceeds threshold),
                 False otherwise.
         """
-        if self.sample_rate == 44100:
+        if self.sample_rate == 48000:
             audio_chunk = audio_chunk[::3]
             vad_sample_rate = 16000  # Silero VAD expects 16k
+        elif self.sample_rate == 44100:
+            # Fallback for old rate if used, though it's still slightly inaccurate without proper resampling
+            audio_chunk = audio_chunk[::3]
+            vad_sample_rate = 16000
         else:
             vad_sample_rate = self.sample_rate
         
