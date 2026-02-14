@@ -5,11 +5,28 @@ Provides global fixtures for hardware mocking and state management that apply
 to all tests automatically, eliminating the need for repetitive mocking code.
 """
 
+import os
+
+if os.getenv("ENABLE_QWEN3_TTS_TESTS"):
+    os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 import numpy as np
 import pytest
 
 from backend.api.types import EmotionOverride, JanusMode
 from backend.common import engine_state
+
+
+def pytest_configure(config):
+    """Register filterwarnings for known third-party deprecations (torch, audioread)."""
+    config.addinivalue_line(
+        "filterwarnings",
+        "ignore::DeprecationWarning:torch.jit._script",
+    )
+    config.addinivalue_line(
+        "filterwarnings",
+        "ignore::DeprecationWarning:audioread.rawread",
+    )
 
 
 class MockAudioService:
