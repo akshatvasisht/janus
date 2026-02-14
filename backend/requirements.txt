@@ -7,11 +7,21 @@ numpy>=1.24.0
 # Voice Activity Detection
 # CPU-only PyTorch for wider hardware compatibility
 # pip install torch --index-url https://download.pytorch.org/whl/cpu
-torch>=2.0.0
+torch>=2.2.0
 silero-vad>=4.0.0
 
-# Text-to-Speech
-fish-audio-sdk>=0.1.0
+# Edge AI Stack (Local Inference)
+# Use the official Qwen3-TTS wrapper. It still downloads weights from the
+# Hugging Face Hub, but avoids relying on Transformers' AutoConfig mapping
+# for the very new `qwen3_tts` model_type.
+qwen-tts==0.0.5
+# NOTE: `qwen-tts` pins its own `transformers` / `accelerate` versions.
+# Avoid declaring separate constraints here to keep installs reproducible and
+# prevent confusing resolver behavior.
+scipy
+soundfile
+librosa
+bitsandbytes  # Optional: Required for 4-bit quantization on CUDA devices (Linux/Windows only; MacOS MPS uses standard float16)
 
 # Serialization
 msgpack>=1.0.7
@@ -23,7 +33,6 @@ python-multipart>=0.0.6
 
 # WebSocket Communication
 python-socketio>=5.10.0
-websockets>=12.0
 
 # Environment Management
 python-dotenv>=1.0.0

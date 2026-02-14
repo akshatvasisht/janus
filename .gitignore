@@ -40,6 +40,6 @@ logs/
 # Generated assets
 **/*.wav
 
-# Cache and Agent Context
+# Local caches / generated context (do not commit)
 .hf/
 agentcontext/

@@ -12,12 +12,13 @@ Run all tests from the project root:
 pytest backend/tests/
 ```
 
+To run the full suite quietly: `pytest backend/tests/ -q`.
+
 Run specific test files:
 
 ```bash
 pytest backend/tests/test_api_flow.py
 pytest backend/tests/test_engine.py
-pytest backend/tests/test_e2e_local.py
 pytest backend/tests/test_input_processing.py
 ```
 
@@ -33,16 +34,35 @@ Run tests with coverage:
 pytest backend/tests/ --cov=backend --cov-report=html
 ```
 
+### Qwen3-TTS / model-loading tests
+
+The integration test `test_model_loading_and_inference` is **skipped by default** unless `ENABLE_QWEN3_TTS_TESTS=1` is set (it loads ~1GB model weights and runs real inference).
+
+To run the slow test (load + generate):
+
+```bash
+ENABLE_QWEN3_TTS_TESTS=1 pytest backend/tests/test_model_loading.py::test_model_loading_and_inference -v
+```
+
+For reliable results (avoids CUDA assert with placeholder ref audio), run on CPU:
+
+```bash
+CUDA_VISIBLE_DEVICES="" ENABLE_QWEN3_TTS_TESTS=1 pytest backend/tests/test_model_loading.py::test_model_loading_and_inference -v
+```
+
+The test uses the default reference audio from setup (`backend/assets/enrollment.wav`).
+
 ### Test Structure
 
 Tests are organized in `backend/tests/` with the following structure:
 
-- `conftest.py`: Pytest fixtures (mock AudioService, reset engine state); applied automatically to all tests
 - `test_api_flow.py`: Tests for REST API endpoints and WebSocket communication
-- `test_e2e_local.py`: End-to-end local pipeline tests (sender→receiver in memory, no hardware)
+- `test_e2e_local.py`: End-to-end local pipeline tests
 - `test_engine.py`: Tests for Smart Ear engine loop and receiver loop
 - `test_input_processing.py`: Tests for audio processing pipeline (VAD, transcription, prosody)
+- `test_model_loading.py`: Qwen3-TTS ModelManager singleton and optional load+inference
 - `test_synthesis.py`: Tests for voice synthesis functionality
+- `test_text_processing.py`: SentenceBuffer and text tokenization
 - `test_transport_layer.py`: Tests for packet serialization and network transmission
 - `test_voice_cloning.py`: Tests for voice cloning and reference audio handling
 
@@ -57,7 +77,7 @@ Following STYLE.md standards:
 
 Automated tests must not rely on:
 - Live hardware (microphones, speakers)
-- External APIs (Fish Audio SDK)
+- External APIs (none for TTS; Qwen3-TTS runs locally)
 - Network connections (except mocked)
 
 Use `unittest.mock` or `pytest-mock` to isolate external dependencies:
@@ -164,8 +184,8 @@ The standalone CLI tools (`backend/scripts/sender_main.py` and `backend/scripts/
 **Receiver (Terminal 1):**
 
 ```bash
-export FISH_AUDIO_API_KEY=your_api_key
 export RECEIVER_PORT=5005
+# Optional: REFERENCE_AUDIO_PATH=/path/to/enrollment.wav
 python -m backend.scripts.receiver_main
 ```
 

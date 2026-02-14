@@ -72,6 +72,8 @@ Sent from the backend when a packet is transmitted, providing metadata for bandw
 - `bytes` (integer, required): Packet size in bytes
 - `mode` (string, required): Transmission mode (`"semantic"`, `"text_only"`, or `"morse"`)
 - `created_at_ms` (integer, required): Packet creation timestamp in milliseconds
+- `emotion` (string, optional): Emotion used for synthesis (if applicable)
+- `snippet` (string, optional): Short text preview of packet content
 
 **Example:**
 ```json
@@ -79,7 +81,9 @@ Sent from the backend when a packet is transmitted, providing metadata for bandw
   "type": "packet_summary",
   "bytes": 142,
   "mode": "semantic",
-  "created_at_ms": 1699123456789
+  "created_at_ms": 1699123456789,
+  "emotion": "auto",
+  "snippet": "Hello, this is a test"
 }
 ```
 
@@ -185,8 +189,8 @@ All WebSocket messages are JSON strings. The backend uses Pydantic models for va
 ### State Management
 
 Control state is managed in `backend/common/engine_state.py`:
-- `ControlState` object holds current mode, flags, and emotion override
-- Updated atomically when `ControlMessage` is received
+- `ControlState` object holds current mode, flags, emotion override, and audio ducking settings (`ducking_enabled`, `ducking_level`, `is_talking`)
+- Updated atomically when `ControlMessage` is received (frontend sends mode, streaming/recording, emotion only; ducking is server-side)
 - Read by `smart_ear_loop` to determine processing behavior
 
 Event queues (`transcript_queue`, `packet_queue`) are used to decouple engine processing from WebSocket communication:

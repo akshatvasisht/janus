@@ -94,17 +94,13 @@ tail -f backend/logs/janus.log
 
 Create a `.env` file in the project root with the following variables:
 
-### Required
-
-- **`FISH_AUDIO_API_KEY`**: API key for Fish Audio SDK voice synthesis service. Obtain from your Fish Audio account.
-
 ### Optional
 
 - **`RECEIVER_PORT`**: Port for listening to incoming packet transmissions (default: `5005`)
 - **`USE_TCP`**: Set to `"true"` to use TCP instead of UDP (default: `false`). Automatically enabled when `TARGET_IP` contains "ngrok"
 - **`TARGET_IP`**: Target IP address for outgoing packet transmission (default: `127.0.0.1`). Set to ngrok URL for cross-network connections
 - **`TARGET_PORT`**: Target port for outgoing packet transmission (default: `5005`)
-- **`REFERENCE_AUDIO_PATH`**: Path to reference audio file for voice cloning (optional)
+- **`REFERENCE_AUDIO_PATH`**: Path to reference audio file for voice cloning (optional). If not set, Janus uses `backend/assets/enrollment.wav`.
 
 ## Network Configuration (Connecting Machines for Full-Duplex Communication)
 
@@ -164,7 +160,8 @@ Both machines can now send and receive audio packets across the internet. The sy
 - **IMPORTANT**: The setup script installs CPU-only PyTorch to avoid downloading 2.5GB CUDA packages
 - faster-whisper will download model files on first use (stored in cache)
 - Silero VAD will download model files on first use (stored in cache)
-- Fish Audio SDK requires a valid API key with sufficient credits
+- Qwen3-TTS model weights are downloaded from the Hugging Face Hub on first synthesis (optional `HF_TOKEN` for gated models). `HF_HUB_DISABLE_SYMLINKS=1` is set in `backend/setup.sh` for WSL/container compatibility.
+- **Test toggles**: `JANUS_QWEN3_TTS_DRY_RUN=1` for fast unit tests (no model load). `ENABLE_QWEN3_TTS_TESTS=1` to run slow model-loading tests.
 - The backend server must be running before starting the frontend for WebSocket connections
 
 ## Audio Utilities

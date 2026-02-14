@@ -42,8 +42,12 @@ MadHacks/
 │   │   ├── vad.py                  # Silero-VAD logic
 │   │   ├── transcriber.py          # Faster-Whisper (Int8 quantized)
 │   │   ├── prosody.py              # Aubio (Pitch/Energy extraction)
-│   │   ├── synthesizer.py          # Fish Audio SDK integration
+│   │   ├── synthesizer.py          # Qwen3-TTS via ModelManager (local inference)
+│   │   ├── model_manager.py        # Qwen3-TTS model loading and generation
+│   │   ├── text_processing.py      # SentenceBuffer and text tokenization
 │   │   └── link_simulator.py       # Network throttling (300bps simulation)
+│   ├── assets/                     # Reference audio (created by setup.sh)
+│   │   └── enrollment.wav          # Default voice-clone reference (3s placeholder)
 │   ├── scripts/                    # CLI utility scripts
 │   │   ├── sender_main.py          # CLI tool for direct network testing (standalone)
 │   │   └── receiver_main.py        # CLI tool for direct network testing (standalone)
@@ -53,7 +57,9 @@ MadHacks/
 │   │   ├── test_e2e_local.py       # End-to-end local pipeline tests
 │   │   ├── test_engine.py
 │   │   ├── test_input_processing.py
+│   │   ├── test_model_loading.py   # Qwen3-TTS ModelManager load/inference
 │   │   ├── test_synthesis.py
+│   │   ├── test_text_processing.py
 │   │   ├── test_transport_layer.py
 │   │   ├── test_voice_cloning.py
 │   │   ├── hardware_check.py       # Manual hardware verification
@@ -84,9 +90,7 @@ MadHacks/
 │   │   └── ui/                     # Shared UI primitives (e.g. card, button)
 │   ├── hooks/
 │   │   ├── useJanusSocket.ts       # Main socket hook (mode conversion)
-│   │   ├── useJanusWebSocket.ts    # WebSocket connection management
-│   │   ├── useBackendHealth.ts     # Backend health check
-│   │   └── useDebounce.ts          # Debounce utility
+│   │   └── useJanusWebSocket.ts    # WebSocket connection management
 │   ├── providers/                  # React context providers
 │   ├── lib/                        # Utilities (e.g. cn)
 │   ├── types/
@@ -101,8 +105,8 @@ MadHacks/
 │   └── STYLE.md                    # Coding standards
 ├── README.md                       # Project overview
 └── LICENSE
+```
 
----
 
 ## Technology Stack
 
@@ -110,12 +114,12 @@ MadHacks/
 | ---------------------- | ------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | **Frontend Framework** | **React (via Next.js 14)** | User interface (Dashboard, Controls, Transcript Display) | App Router enables rapid development |
 | **Styling**            | **Tailwind CSS**          | UI styling (Dark mode, responsive design)            | Rapid prototyping without custom CSS                                      |
-| **Visualization**      | **Recharts**              | Real-time bandwidth and packet visualization (/telemetry)  | Simple, composable React charts (TelemetryGraph, NetworkLog)                    |
+| **Visualization**      | **Recharts**              | Real-time data visualization (planned for telemetry)      | Simple, composable React charts                                                  |
 | **Backend API**        | **FastAPI**               | REST and WebSocket server                              | Async support for real-time streaming                               |
 | **Speech-to-Text**     | **faster-whisper**        | Local speech transcription (Int8 quantized)            | Optimized Whisper runs efficiently on CPU                        |
 | **Voice Detection**    | **silero-vad**            | Voice activity detection (gatekeeper)                   | Lightweight and low-latency                            |
 | **Prosody Analysis**   | **aubio**                 | Pitch (F0) and energy extraction                        | Real-time audio feature extraction                              |
-| **Generative TTS**     | **Fish Audio SDK**        | Voice synthesis from text + metadata                    | Voice reconstruction from semantic data                              |
+| **Generative TTS**     | **Qwen3-TTS (ModelManager)** | Voice synthesis from text + metadata (local inference) | Voice reconstruction from semantic data; model loaded via Hugging Face Hub |
 | **Audio I/O**          | **PyAudio**               | Microphone capture and speaker playback                 | Lower latency than browser audio          |
 | **Protocol**           | **MessagePack**           | Binary serialization of Janus packets                   | Smaller and faster than JSON                        |
 | **Network Logic**      | **Python `socket`**       | TCP/UDP socket communication with throttling            | Manual control of transmission rate                            |
@@ -150,8 +154,8 @@ The Janus backend uses a unified architecture centered around `server.py`, which
 - Background thread (`receiver_loop`) that:
   - Listens for incoming TCP connections
   - Receives and deserializes Janus packets
-  - Synthesizes audio using Fish Audio SDK
-  - Queues audio bytes for playback worker thread
+  - Tokenizes packet text with `text_processing.iter_text_tokens` and synthesizes per-sentence via `SentenceBuffer` and `Synthesizer` (Qwen3-TTS via ModelManager), flushing at end-of-packet to avoid hanging text
+  - Queues PCM audio bytes for playback worker thread
   - Plays audio through `AudioService`
 
 **WebSocket Manager (`api/socket_manager.py`):**
@@ -194,9 +198,10 @@ These tools operate independently of the unified backend and do not use WebSocke
 **Receiver Side:**
 1. **Network Reception**: `receiver_loop` receives TCP connection and reads packet data
 2. **Deserialization**: MessagePack data is deserialized into `JanusPacket`
-3. **Synthesis**: Fish Audio SDK synthesizes audio from text + prosody metadata
-4. **Playback Queue**: Audio bytes are queued for playback worker
-5. **Audio Output**: `AudioService` writes audio chunks to speaker
+3. **Text Tokenization**: Packet text is tokenized with `iter_text_tokens` and fed into `SentenceBuffer`
+4. **Synthesis**: For each complete sentence (or flush at end-of-packet), Qwen3-TTS via ModelManager synthesizes PCM audio from text + prosody/reference
+5. **Playback Queue**: Audio bytes are queued for playback worker
+6. **Audio Output**: `AudioService` writes audio chunks to speaker
 
 ---
 
@@ -228,7 +233,7 @@ Janus supports three transmission modes (defined in `JanusMode` enum):
 
 The 300 bps target bitrate requires semantic compression (~136 bps payload) instead of acoustic waveform reconstruction, resulting in a walkie-talkie interaction model with 2.8-3.0 second turnaround latency:
 
-- Latency is driven by the need to buffer complete phrases for generative AI (Whisper ASR, Fish Audio TTS).
+- Latency is driven by the need to buffer complete phrases for generative AI (Whisper ASR, Qwen3-TTS).
 - Processing starts after 16 consecutive silence chunks (~500ms) to ensure semantic completeness.
 - Faster-Whisper uses greedy decoding (beam_size=1) to reduce compute time with minimal accuracy loss.
 - Bandwidth efficiency is prioritized over low latency for scenarios where traditional codecs are unsuitable.
@@ -253,6 +258,13 @@ MessagePack was chosen over JSON for packet serialization because:
 - Faster serialization/deserialization
 - Binary format reduces parsing overhead
 - Maintains compatibility with text-based metadata
+
+### Sentence-Level Synthesis
+
+Receiver synthesis uses `SentenceBuffer` and `iter_text_tokens` so that:
+- Text is tokenized into sentence-boundary units and synthesized per-sentence
+- End-of-packet flush ensures no text remains buffered when a packet is complete, avoiding “hanging” partial sentences
+- The same logic is used in both the unified backend `receiver_loop` and the standalone `receiver_main.py` CLI
 
 ### CPU-Only PyTorch
 

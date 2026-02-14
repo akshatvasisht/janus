@@ -11,13 +11,12 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?logo=fastapi&logoColor=white)
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.0-EE4C2C?logo=pytorch&logoColor=white)
 ![Whisper](https://img.shields.io/badge/STT-Faster--Whisper-violet)
-![TTS](https://img.shields.io/badge/TTS-Fish%20Audio-8B5CF6)
+![TTS](https://img.shields.io/badge/TTS-Qwen3-8B5CF6?logo=huggingface&logoColor=white)
 ![MsgPack](https://img.shields.io/badge/Protocol-MessagePack-informational)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-15.0-black?logo=next.js&logoColor=white)
 ![Tailwind](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?logo=tailwind-css&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
-![Event](https://img.shields.io/badge/Submission-MadHacks%202025-FFD700)
 
 Janus is a real-time semantic audio codec system designed to optimize bandwidth by transmitting semantic meaning rather than raw audio waveforms. Instead of sending compressed audio data, Janus converts speech to text, extracts prosodic metadata (pitch and energy), and reconstructs the voice on the receiver side using generative text-to-speech synthesis. This approach enables high-quality voice communication over extremely constrained network connections (as low as 300bps), where it is reconstructed into natural-sounding speech using modern generative TTS models.
 
@@ -28,38 +27,21 @@ Janus is an implementation of concepts introduced in **[SemantiCodec (Liu et al.
 ### How Janus Works
 Janus extends into a real-time system by leveraging an end-to-end STT → semantic-packet → TTS pipeline:
 1. **STT Layer (Faster-Whisper)**
+   Extracts text and timestamps from live speech.
 2. **Prosody Layer (Aubio)**
    Captures pitch and energy to preserve vocal tone.
 3. **Compression Layer (MessagePack)**
    Packages text and prosody into ~300 bps payloads.
-4. **Reconstruction Layer (FishAudio TTS)**
-   Generates natural speech using the received semantic instructions.
+4. **Reconstruction Layer (Local Qwen3-TTS)**
+   Generates natural speech on-device using the received semantic instructions and a reference enrollment clip.
 
-<p align="center">
-  <img width="100%" alt="Janus Architecture Pipeline" src="https://github.com/user-attachments/assets/db7cb35e-ae87-4fb7-b0a0-35903f7572a8" />
-</p>
+<img width="1897" height="216" alt="image" src="https://github.com/user-attachments/assets/e5dc9ec6-1b3b-4ed1-a05c-f89d3945d813" />
 
-
-<details>
-  <summary><b>View Dashboard</b></summary>
-  <br>
-
-| Blank Dashboard | Active Dashboard |
-| :---: | :---: |
-| <img src="docs/images/blank_dashboard.png" width="100%"> | <img src="docs/images/active_dashboard.png" width="100%"> |
-
-</details>
+---
 
 ## Impact
 
 Traditional codecs bind audio quality to bandwidth: less data means worse sound. Janus sidesteps this by transmitting text and prosody instructions instead of audio. This allows for crystal-clear voice reconstruction at 300bps, regardless of network conditions.
-
-<details>
-  <summary><b>View Telemetry</b></summary>
-  <div align="center">
-    <img src="docs/images/telemetry.png" width="80%" alt="Janus Telemetry Monitoring" />
-  </div>
-</details>
 
 ### Performance
 

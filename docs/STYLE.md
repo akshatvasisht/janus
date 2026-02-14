@@ -112,7 +112,7 @@ Janus is a real-time semantic audio codec system designed to optimize bandwidth 
 * **vad:** Voice Activity Detection (Silero). Acts as a gatekeeper to filter silence.
 * **transcriber:** Local Speech-to-Text using faster-whisper (Int8 quantized for CPU performance).
 * **prosody:** Extracts emotional metadata (Pitch/Energy) using aubio.
-* **synthesizer:** Reconstructs audio on the receiver side using Generative TTS (Fish Audio SDK).
+* **synthesizer:** Reconstructs audio on the receiver side using local Qwen3-TTS via ModelManager.
 * **link_simulator:** Simulates a constrained 300bps network connection for demonstration purposes.
 
 ### 4.3 Data Flow
@@ -137,7 +137,7 @@ Janus is a real-time semantic audio codec system designed to optimize bandwidth 
 * **Naming Conventions:**
     * Test files must be prefixed with `test_` (e.g., `test_api_flow.py`).
     * Test functions must be prefixed with `test_` (e.g., `def test_health_check():`).
-* **Mocking:** Use unittest.mock or pytest-mock to isolate external dependencies. Do not rely on live hardware (microphones) or external APIs (Fish Audio) during standard test runs.
+* **Mocking:** Use unittest.mock or pytest-mock to isolate external dependencies. Do not rely on live hardware (microphones) or external APIs; TTS runs locally (Qwen3-TTS) during standard test runs.
 * **Fixtures:** Use pytest fixtures for setup/teardown (e.g., resetting engine state) rather than global variables where possible.
 
 ---
