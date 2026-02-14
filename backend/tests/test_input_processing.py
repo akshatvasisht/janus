@@ -27,7 +27,7 @@ from backend.services.vad import VoiceActivityDetector
 # Test Utilities and Fixtures
 # ============================================================================
 
-def generate_sine_wave(frequency=440.0, duration=1.0, sample_rate=44100, amplitude=0.5):
+def generate_sine_wave(frequency=440.0, duration=1.0, sample_rate=48000, amplitude=0.5):
     """
     Generate a sine wave audio signal (for ProsodyExtractor tests).
     
@@ -45,14 +45,14 @@ def generate_sine_wave(frequency=440.0, duration=1.0, sample_rate=44100, amplitu
     return wave
 
 
-def generate_silence(duration=0.1, sample_rate=44100):
+def generate_silence(duration=0.1, sample_rate=48000):
     """Generate silence (zeros) for testing."""
     return np.zeros(int(sample_rate * duration), dtype=np.float32)
 
 
-def generate_audio_chunk(chunk_size=512, sample_rate=44100):
+def generate_audio_chunk(chunk_size=1536, sample_rate=48000):
     """
-    Generate a valid audio chunk matching CHUNK_SIZE (512 samples).
+    Generate a valid audio chunk matching CHUNK_SIZE (1536 samples).
     
     Args:
         chunk_size: Number of samples (default 512)
@@ -134,8 +134,8 @@ class TestAudioService:
         
         service = AudioService()
         
-        assert service.SAMPLE_RATE == 44100
-        assert service.CHUNK_SIZE == 512
+        assert service.SAMPLE_RATE == 48000
+        assert service.CHUNK_SIZE == 1536
         assert service.CHANNELS == 1
         assert mock_pa.open.call_count == 2  # Input and output streams
     
@@ -196,7 +196,7 @@ class TestAudioService:
         
         # Should return zeros on overflow
         assert isinstance(chunk, np.ndarray)
-        assert len(chunk) == 512  # CHUNK_SIZE
+        assert len(chunk) == 1536  # CHUNK_SIZE
         assert np.all(chunk == 0.0)
     
     @patch('backend.services.audio_io.pyaudio')
@@ -301,13 +301,13 @@ class TestVoiceActivityDetector:
         
         mock_hub_load.return_value = (mock_model, mock_utils)
         
-        vad = VoiceActivityDetector(threshold=0.5, sample_rate=44100)
+        vad = VoiceActivityDetector(threshold=0.5, sample_rate=48000)
         
         # Manually overwrite model to ensure test control
         vad.model = mock_model
         
         assert vad.threshold == 0.5
-        assert vad.sample_rate == 44100
+        assert vad.sample_rate == 48000
         mock_hub_load.assert_called_once()
     
     @patch('backend.services.vad.torch.hub.load')
@@ -438,15 +438,15 @@ class TestProsodyExtractor:
     
     def test_init(self):
         """Test ProsodyExtractor initialization."""
-        extractor = ProsodyExtractor(sample_rate=44100, hop_size=512)
+        extractor = ProsodyExtractor(sample_rate=48000, hop_size=512)
         
-        assert extractor.sample_rate == 44100
+        assert extractor.sample_rate == 48000
         assert extractor.hop_size == 512
         assert extractor.pitch_detector is not None
     
     def test_analyze_buffer_returns_dict(self):
         """Test analyze_buffer returns dict with energy and pitch keys."""
-        extractor = ProsodyExtractor(sample_rate=44100)
+        extractor = ProsodyExtractor(sample_rate=48000)
         
         # Use real sine wave (not mocked)
         audio_buffer = generate_sine_wave(frequency=440.0, duration=0.5, amplitude=0.3)
@@ -460,7 +460,7 @@ class TestProsodyExtractor:
     
     def test_analyze_buffer_energy_classification(self):
         """Test energy classification (Quiet/Normal/Loud)."""
-        extractor = ProsodyExtractor(sample_rate=44100)
+        extractor = ProsodyExtractor(sample_rate=48000)
         
         # Test Quiet (low amplitude)
         quiet_audio = generate_sine_wave(amplitude=0.02, duration=0.5)
@@ -479,7 +479,7 @@ class TestProsodyExtractor:
     
     def test_analyze_buffer_pitch_detection(self):
         """Test pitch detection with 440Hz sine wave."""
-        extractor = ProsodyExtractor(sample_rate=44100)
+        extractor = ProsodyExtractor(sample_rate=48000)
         
         # 440Hz should be detected as Normal pitch (between 120-200Hz threshold)
         # Actually, 440Hz is above 200Hz, so should be 'High'
@@ -491,7 +491,7 @@ class TestProsodyExtractor:
     
     def test_analyze_buffer_with_list(self):
         """Test analyze_buffer handles list input."""
-        extractor = ProsodyExtractor(sample_rate=44100)
+        extractor = ProsodyExtractor(sample_rate=48000)
         
         # Pass list of arrays
         audio_list = [
@@ -516,6 +516,7 @@ class TestSenderMain:
     def test_audio_producer_queues_chunks(self):
         """Test audio_producer continuously reads and queues chunks."""
         mock_audio_service = MagicMock()
+        mock_audio_service.SAMPLE_RATE = 48000
         audio_queue = queue.Queue(maxsize=100)
         stop_event = threading.Event()
         
@@ -553,6 +554,7 @@ class TestSenderMain:
     def test_audio_consumer_toggle_mode(self):
         """Test audio_consumer in toggle/streaming mode with VAD."""
         mock_audio_service = MagicMock()
+        mock_audio_service.SAMPLE_RATE = 48000
         mock_vad = MagicMock()
         mock_transcriber = MagicMock()
         mock_prosody = MagicMock()
@@ -571,12 +573,12 @@ class TestSenderMain:
         # Using proper chunk size prevents silent failures in consumer thread
         # Add 5 speech chunks
         for _ in range(5):
-            chunk = generate_audio_chunk(chunk_size=512)
+            chunk = generate_audio_chunk(chunk_size=1536)
             audio_queue.put(chunk)
         
-        # Add 30 silence chunks to trigger silence threshold (SILENCE_THRESHOLD_CHUNKS = 20, needs > 20)
+        # Add 30 silence chunks to trigger silence threshold (SILENCE_THRESHOLD_CHUNKS = 15, needs > 15)
         for _ in range(30):
-            silence_chunk = np.zeros(512, dtype=np.float32)
+            silence_chunk = np.zeros(1536, dtype=np.float32)
             audio_queue.put(silence_chunk)
         
         # Set stop event after a delay to ensure consumer has time to process
@@ -588,6 +590,13 @@ class TestSenderMain:
         
         # Run the REAL audio_consumer (imported from sender_main)
         # It already defaults to is_streaming_mode=True, so no patching is needed.
+        # Use a mock executor that runs the function immediately for testing
+        mock_executor = MagicMock()
+        def mock_submit(fn, *args, **kwargs):
+            fn(*args, **kwargs)
+            return MagicMock()
+        mock_executor.submit.side_effect = mock_submit
+
         audio_consumer(
             mock_audio_service,
             mock_vad,
@@ -595,6 +604,7 @@ class TestSenderMain:
             mock_prosody,
             mock_link_sim,
             audio_queue,
+            mock_executor,
             stop_event
         )
         
@@ -608,6 +618,7 @@ class TestSenderMain:
     def test_audio_consumer_hold_mode(self):
         """Test audio_consumer in hold mode bypasses VAD."""
         mock_audio_service = MagicMock()
+        mock_audio_service.SAMPLE_RATE = 48000
         mock_vad = MagicMock()
         mock_transcriber = MagicMock()
         mock_prosody = MagicMock()
@@ -616,9 +627,9 @@ class TestSenderMain:
         audio_queue = queue.Queue()
         stop_event = threading.Event()
         
-        # Add valid 512-sample chunks to queue (matching CHUNK_SIZE)
+        # Add valid 1536-sample chunks to queue (matching CHUNK_SIZE)
         for _ in range(3):
-            chunk = generate_audio_chunk(chunk_size=512)
+            chunk = generate_audio_chunk(chunk_size=1536)
             audio_queue.put(chunk)
         
         # Set stop event
@@ -637,7 +648,8 @@ class TestSenderMain:
             audio_consumer(
                 mock_audio_service, mock_vad, mock_transcriber, mock_prosody,
                 mock_link_sim,  # Phase 3: Pass link simulator
-                audio_queue, stop_event
+                audio_queue, MagicMock(), # executor
+                stop_event
             )
         except Exception as e:
             # Expected to exit when stop_event is set
@@ -650,6 +662,7 @@ class TestSenderMain:
         # Note: Full testing of state variables (is_streaming_mode, is_recording_hold)
         # would require refactoring sender_main.py to accept them as parameters
         mock_audio_service = MagicMock()
+        mock_audio_service.SAMPLE_RATE = 48000
         mock_vad = MagicMock()
         mock_transcriber = MagicMock()
         mock_prosody = MagicMock()
@@ -661,9 +674,9 @@ class TestSenderMain:
         # Add silence chunks (VAD returns False) - use valid 512-sample chunks
         mock_vad.is_speech.return_value = False
         
-        for _ in range(20):  # More than SILENCE_THRESHOLD_CHUNKS (16)
+        for _ in range(20):  # More than SILENCE_THRESHOLD_CHUNKS (6)
             # Generate silence chunk with proper size
-            silence_chunk = np.zeros(512, dtype=np.float32)
+            silence_chunk = np.zeros(1536, dtype=np.float32)
             audio_queue.put(silence_chunk)
         
         # Set stop event immediately to prevent infinite loop
@@ -674,7 +687,8 @@ class TestSenderMain:
             audio_consumer(
                 mock_audio_service, mock_vad, mock_transcriber, mock_prosody,
                 mock_link_sim,  # Phase 3: Pass link simulator
-                audio_queue, stop_event
+                audio_queue, MagicMock(), # executor
+                stop_event
             )
         except Exception:
             pass  # Expected to exit when stop_event is set
