@@ -1,6 +1,8 @@
 import asyncio
 import logging
+import os
 import threading
+from logging.handlers import RotatingFileHandler
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -12,7 +14,25 @@ from .common import engine_state
 from .services.audio_io import AudioService
 from .services.engine import receiver_loop, smart_ear_loop
 
-logging.basicConfig(level=logging.INFO)
+# Configure logging
+LOG_DIR = os.path.join(os.path.dirname(__file__), "logs")
+os.makedirs(LOG_DIR, exist_ok=True)
+LOG_FILE = os.path.join(LOG_DIR, "janus.log")
+
+file_handler = RotatingFileHandler(
+    LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=5
+)
+file_handler.setFormatter(
+    logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+)
+
+logging.basicConfig(
+    level=logging.INFO,
+    handlers=[
+        file_handler,
+        logging.StreamHandler()
+    ]
+)
 logger = logging.getLogger(__name__)
 
 

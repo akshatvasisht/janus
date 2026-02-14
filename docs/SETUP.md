@@ -75,6 +75,21 @@ The frontend will be available at `http://localhost:3000`.
 
 Open `http://localhost:3000` in your browser to access the Janus interface.
 
+## Proper Logging
+
+The Janus backend uses a `RotatingFileHandler` to persist logs for long-term troubleshooting. 
+
+- **Log Location**: `backend/logs/janus.log`
+- **Configuration**: 
+  - Max Size: 5MB per file
+  - Backup Count: 5 files
+  - Level: `INFO` (includes connection events, state changes, and audio processing status)
+
+You can monitor logs in real-time using `tail`:
+```bash
+tail -f backend/logs/janus.log
+```
+
 ## Environment Variables
 
 Create a `.env` file in the project root with the following variables:
