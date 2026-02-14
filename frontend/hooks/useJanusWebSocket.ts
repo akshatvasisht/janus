@@ -8,6 +8,7 @@ import type {
   PacketSummaryMessage,
   ConnectionStatus,
   IncomingTranscriptMessage,
+  ControlStateMessage,
 } from '@/types/janus';
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://127.0.0.1:8000/ws/janus';
@@ -18,6 +19,7 @@ export const queryKeys = {
   lastPacket: ['janus', 'lastPacket'] as const,
   connectionStatus: ['janus', 'connectionStatus'] as const,
   packetHistory: ['janus', 'packetHistory'] as const,
+  controlState: ['janus', 'controlState'] as const,
 };
 
 type UseJanusWebSocketResult = {
@@ -27,6 +29,7 @@ type UseJanusWebSocketResult = {
   packetHistory: PacketSummaryMessage[];
   sendControl: (control: Partial<ControlMessage>) => void;
   isConnected: boolean;
+  lastError: string | null;
   reconnect: () => void;
   disconnect: () => void;
 };
@@ -63,6 +66,19 @@ const isPacketSummaryMessage = (
   );
 };
 
+const isControlStateMessage = (
+  data: unknown
+): data is ControlStateMessage => {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    (data as { type?: unknown }).type === 'control_state' &&
+    typeof (data as { is_streaming?: unknown }).is_streaming === 'boolean' &&
+    typeof (data as { is_recording?: unknown }).is_recording === 'boolean' &&
+    isJanusMode((data as { mode?: unknown }).mode)
+  );
+};
+
 /**
  * WebSocket hook for Janus backend communication.
  *
@@ -77,7 +93,29 @@ export function useJanusWebSocket(): UseJanusWebSocketResult {
   const wsRef = useRef<WebSocket | null>(null);
   const [connectionStatus, setConnectionStatus] =
     useState<ConnectionStatus>('disconnected');
+  const [lastError, setLastError] = useState<string | null>(null);
   const queryClient = useQueryClient();
+
+  // Load persisted data on mount
+  useEffect(() => {
+    const persistedTranscripts = localStorage.getItem('janus_transcripts');
+    if (persistedTranscripts) {
+      try {
+        queryClient.setQueryData(queryKeys.transcripts, JSON.parse(persistedTranscripts));
+      } catch (e) {
+        console.error('Failed to parse persisted transcripts', e);
+      }
+    }
+
+    const persistedPacketHistory = localStorage.getItem('janus_packetHistory');
+    if (persistedPacketHistory) {
+      try {
+        queryClient.setQueryData(queryKeys.packetHistory, JSON.parse(persistedPacketHistory));
+      } catch (e) {
+        console.error('Failed to parse persisted packet history', e);
+      }
+    }
+  }, [queryClient]);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data: transcripts = [] } = useQuery<TranscriptMessage[]>({
@@ -126,6 +164,7 @@ export function useJanusWebSocket(): UseJanusWebSocketResult {
 
     ws.onopen = () => {
       setConnectionStatus('connected');
+      setLastError(null);
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
@@ -149,7 +188,11 @@ export function useJanusWebSocket(): UseJanusWebSocketResult {
 
           queryClient.setQueryData<TranscriptMessage[]>(
             queryKeys.transcripts,
-            (old = []) => [transcript, ...old]
+            (old = []) => {
+              const next = [transcript, ...old];
+              localStorage.setItem('janus_transcripts', JSON.stringify(next.slice(0, 100)));
+              return next;
+            }
           );
           return;
         }
@@ -164,8 +207,18 @@ export function useJanusWebSocket(): UseJanusWebSocketResult {
             queryKeys.packetHistory,
             (old = []) => {
               const next = [...old, data];
-              return next.slice(-200);
+              const sliced = next.slice(-200);
+              localStorage.setItem('janus_packetHistory', JSON.stringify(sliced));
+              return sliced;
             }
+          );
+          return;
+        }
+
+        if (isControlStateMessage(data)) {
+          queryClient.setQueryData<ControlStateMessage>(
+            queryKeys.controlState,
+            data
           );
           return;
         }
@@ -174,9 +227,10 @@ export function useJanusWebSocket(): UseJanusWebSocketResult {
       }
     };
 
-    ws.onerror = (error) => {
+    ws.onerror = (event) => {
       setConnectionStatus('disconnected');
-      console.error('WebSocket error:', error);
+      setLastError('WebSocket connection failed. Check server status.');
+      console.error('WebSocket error event reported:', event);
     };
 
     ws.onclose = () => {
@@ -224,6 +278,7 @@ export function useJanusWebSocket(): UseJanusWebSocketResult {
     packetHistory,
     sendControl: sendControlMutation.mutate,
     isConnected: connectionStatus === 'connected',
+    lastError,
     reconnect: connect,
     disconnect,
   };
