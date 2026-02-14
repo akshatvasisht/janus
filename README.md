@@ -28,7 +28,6 @@ Janus is an implementation of concepts introduced in **[SemantiCodec (Liu et al.
 ### How Janus Works
 Janus extends into a real-time system by leveraging an end-to-end STT → semantic-packet → TTS pipeline:
 1. **STT Layer (Faster-Whisper)**
-   Extracts text and timestamps from live speech.
 2. **Prosody Layer (Aubio)**
    Captures pitch and energy to preserve vocal tone.
 3. **Compression Layer (MessagePack)**
@@ -36,13 +35,31 @@ Janus extends into a real-time system by leveraging an end-to-end STT → semant
 4. **Reconstruction Layer (FishAudio TTS)**
    Generates natural speech using the received semantic instructions.
 
-<img width="1897" height="216" alt="image" src="https://github.com/user-attachments/assets/db7cb35e-ae87-4fb7-b0a0-35903f7572a8" />
+<p align="center">
+  <img width="100%" alt="Janus Architecture Pipeline" src="https://github.com/user-attachments/assets/db7cb35e-ae87-4fb7-b0a0-35903f7572a8" />
+</p>
 
----
+
+<details>
+  <summary><b>View Dashboard</b></summary>
+  <br>
+
+| Blank Dashboard | Active Dashboard |
+| :---: | :---: |
+| <img src="docs/images/blank_dashboard.png" width="100%"> | <img src="docs/images/active_dashboard.png" width="100%"> |
+
+</details>
 
 ## Impact
 
 Traditional codecs bind audio quality to bandwidth: less data means worse sound. Janus sidesteps this by transmitting text and prosody instructions instead of audio. This allows for crystal-clear voice reconstruction at 300bps, regardless of network conditions.
+
+<details>
+  <summary><b>View Telemetry</b></summary>
+  <div align="center">
+    <img src="docs/images/telemetry.png" width="80%" alt="Janus Telemetry Monitoring" />
+  </div>
+</details>
 
 ### Performance
 
