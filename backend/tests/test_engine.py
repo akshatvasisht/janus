@@ -1,11 +1,18 @@
 import queue
 import socket
 import threading
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock
 
+import numpy as np
 import pytest
 
-from backend.services.engine import playback_worker, recv_exact, receiver_loop
+from backend.common import engine_state
+from backend.services.engine import (
+    apply_ducking_if_needed,
+    playback_worker,
+    recv_exact,
+    receiver_loop,
+)
 
 
 def test_recv_exact_success():
@@ -44,3 +51,53 @@ def test_playback_worker():
     
     mock_audio.write_chunk.assert_called_with(b'audio_data')
 
+
+def test_audio_ducking(reset_ducking_state):
+    """Test audio ducking applies gain reduction when enabled and user is talking."""
+    state = reset_ducking_state
+    original = np.array([1000, -2000, 3000], dtype=np.int16)
+    audio_bytes = original.tobytes()
+
+    # Case 1: ducking disabled, talking
+    state.ducking_enabled = False
+    state.is_talking = True
+    out1 = apply_ducking_if_needed(audio_bytes, state)
+    assert out1 == audio_bytes
+
+    # Case 2: ducking enabled, not talking
+    state.ducking_enabled = True
+    state.is_talking = False
+    out2 = apply_ducking_if_needed(audio_bytes, state)
+    assert out2 == audio_bytes
+
+    # Case 3: ducking enabled, talking, scales audio correctly
+    state.ducking_enabled = True
+    state.is_talking = True
+    state.ducking_level = 0.5
+    original_scaled = np.array([1000, -2000, 0, 32767, -32768], dtype=np.int16)
+    audio_bytes_scaled = original_scaled.tobytes()
+    out_bytes = apply_ducking_if_needed(audio_bytes_scaled, state)
+    out = np.frombuffer(out_bytes, dtype=np.int16)
+    expected = np.clip(original_scaled.astype(np.float32) * 0.5, -32768, 32767).astype(np.int16)
+    assert np.allclose(out, expected, atol=1)
+
+    # Case 4: empty buffer handled without crashing
+    empty_bytes = b''
+    out_empty = apply_ducking_if_needed(empty_bytes, state)
+    assert out_empty == empty_bytes
+
+
+@pytest.fixture
+def reset_ducking_state():
+    """Fixture to reset ducking-related control state between tests."""
+    state = engine_state.control_state
+    original_ducking_enabled = getattr(state, "ducking_enabled", True)
+    original_ducking_level = getattr(state, "ducking_level", 0.25)
+    original_is_talking = getattr(state, "is_talking", False)
+
+    try:
+        yield state
+    finally:
+        state.ducking_enabled = original_ducking_enabled
+        state.ducking_level = original_ducking_level
+        state.is_talking = original_is_talking

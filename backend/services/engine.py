@@ -79,6 +79,8 @@ def playback_worker(
                 continue
             
             if audio_bytes:
+                from ..common import engine_state as _engine_state  # local import to avoid cycles
+                audio_bytes = apply_ducking_if_needed(audio_bytes, _engine_state.control_state)
                 audio_service.write_chunk(audio_bytes)
             
             playback_queue.task_done()
@@ -86,6 +88,49 @@ def playback_worker(
         except Exception as e:
             logger.error(f"Playback error: {e}")
             playback_queue.task_done()
+
+
+def apply_ducking_if_needed(audio_bytes: bytes, state: "engine_state.ControlState") -> bytes:
+    """
+    Apply audio ducking based on shared control state.
+
+    When ducking is enabled and the local user is currently talking, scale the
+    playback PCM samples by the configured ducking_level. Otherwise, return the
+    audio bytes unchanged.
+
+    Args:
+        audio_bytes: Raw PCM audio data (int16).
+        state: Shared ControlState containing ducking configuration.
+
+    Returns:
+        bytes: Possibly gain-reduced PCM audio.
+    """
+    try:
+        if not getattr(state, "ducking_enabled", True):
+            return audio_bytes
+
+        if not getattr(state, "is_talking", False):
+            return audio_bytes
+
+        level = float(getattr(state, "ducking_level", 0.25))
+        # Clamp to [0.0, 1.0]
+        if level <= 0.0:
+            level = 0.0
+        elif level >= 1.0:
+            return audio_bytes
+
+        if not audio_bytes:
+            return audio_bytes
+
+        samples = np.frombuffer(audio_bytes, dtype=np.int16)
+        if samples.size == 0:
+            return audio_bytes
+
+        scaled = np.clip(samples.astype(np.float32) * level, -32768, 32767).astype(np.int16)
+        return scaled.tobytes()
+    except Exception as e:
+        logger.error(f"Error applying ducking: {e}")
+        return audio_bytes
 
 
 def receiver_loop(
@@ -186,6 +231,24 @@ def receiver_loop(
                     avg_pitch_hz = prosody.get('avg_pitch_hz') if isinstance(prosody.get('avg_pitch_hz'), (int, float)) else None
                     avg_energy = prosody.get('avg_energy') if isinstance(prosody.get('avg_energy'), (int, float)) else None
                     
+                    if packet.override_emotion != "Auto":
+                        emotion_tag = packet.override_emotion
+                    else:
+                        prosody = packet.prosody
+                        pitch = prosody.get('pitch', 'Normal')
+                        energy = prosody.get('energy', 'Normal')
+                        
+                        if pitch == 'High' and energy == 'Loud':
+                            emotion_tag = 'Excited'
+                        elif pitch == 'High' and energy == 'Normal':
+                            emotion_tag = 'Joyful'
+                        elif pitch == 'Low' and energy == 'Loud':
+                            emotion_tag = 'Panicked'
+                        elif pitch == 'Low' and energy in ('Quiet', 'Low'):
+                            emotion_tag = 'Serious'
+                        else:
+                            emotion_tag = 'Neutral'
+
                     asyncio.run_coroutine_threadsafe(
                         _emit_events(
                             text=packet.text,
@@ -194,29 +257,12 @@ def receiver_loop(
                             mode=api_mode,
                             transcript_queue=transcript_queue,
                             packet_queue=packet_queue,
+                            emotion=emotion_tag,
                         ),
                         event_loop
                     )
                 except Exception as e:
                     logger.error(f"Failed to emit events to frontend: {e}")
-
-                if packet.override_emotion != "Auto":
-                    emotion_tag = packet.override_emotion
-                else:
-                    prosody = packet.prosody
-                    pitch = prosody.get('pitch', 'Normal')
-                    energy = prosody.get('energy', 'Normal')
-                    
-                    if pitch == 'High' and energy == 'Loud':
-                        emotion_tag = 'Excited'
-                    elif pitch == 'High' and energy == 'Normal':
-                        emotion_tag = 'Joyful'
-                    elif pitch == 'Low' and energy == 'Loud':
-                        emotion_tag = 'Panicked'
-                    elif pitch == 'Low' and energy in ('Quiet', 'Low'):
-                        emotion_tag = 'Serious'
-                    else:
-                        emotion_tag = 'Neutral'
                 
                 mode_names = {
                     ProtocolJanusMode.SEMANTIC_VOICE: "Semantic Voice",
@@ -406,18 +452,23 @@ async def smart_ear_loop(
             is_streaming_mode = control_state.is_streaming
             is_recording_hold = control_state.is_recording
 
+            # Push-to-talk / recording-hold: user is actively talking
             if is_recording_hold:
+                control_state.is_talking = True
                 audio_buffer.append(chunk)
                 previous_hold_state = True
                 continue
 
+            # Transition: PTT just released -> process buffered audio and stop talking
             if previous_hold_state and not is_recording_hold:
                 trigger_processing = True
                 previous_hold_state = False
+                control_state.is_talking = False
 
             elif is_streaming_mode:
                 is_speech = vad_model.is_speech(chunk)
                 if is_speech:
+                    control_state.is_talking = True
                     audio_buffer.append(chunk)
                     silence_counter = 0
                 else:
@@ -427,9 +478,11 @@ async def smart_ear_loop(
 
                     if silence_counter > SILENCE_THRESHOLD_CHUNKS:
                         trigger_processing = True
+                        control_state.is_talking = False
 
             else:
-                pass
+                # Neither recording nor streaming -> ensure talking flag is cleared
+                control_state.is_talking = False
 
             if trigger_processing and len(audio_buffer) > 0:
                 combined_audio = np.concatenate(audio_buffer)
@@ -488,6 +541,7 @@ async def smart_ear_loop(
                         mode=control_state.mode,
                         transcript_queue=transcript_queue,
                         packet_queue=packet_queue,
+                        emotion=str(control_state.emotion_override),
                     )
 
     except asyncio.CancelledError:
@@ -508,6 +562,8 @@ async def _emit_events(
     mode: JanusMode,
     transcript_queue: "asyncio.Queue[TranscriptMessage]",
     packet_queue: "asyncio.Queue[PacketSummaryMessage]",
+    emotion: str | None = None,
+    snippet_length: int = 60,
 ) -> None:
     """
     Emit transcript and packet summary events to frontend queues.
@@ -538,10 +594,14 @@ async def _emit_events(
     # Packet estimate
     approximate_bytes = len(text.encode("utf-8")) + 16
 
+    snippet = text[:snippet_length].strip()
+
     packet_msg = PacketSummaryMessage(
         type="packet_summary",
         bytes=approximate_bytes,
         mode=mode,
         created_at_ms=now_ms,
+        emotion=emotion,
+        snippet=snippet if snippet else None,
     )
     await packet_queue.put(packet_msg)
