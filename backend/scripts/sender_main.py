@@ -10,6 +10,8 @@ import os
 import queue
 import threading
 import time
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 
@@ -61,6 +63,7 @@ def audio_consumer(
     prosody_tool: ProsodyExtractor,
     link_simulator: LinkSimulator,
     audio_queue: queue.Queue[np.ndarray],
+    executor: ThreadPoolExecutor,
     stop_event: threading.Event,
 ) -> None:
     """
@@ -85,20 +88,66 @@ def audio_consumer(
     is_streaming_mode = True
     is_recording_hold = False
     audio_buffer = []
+    pre_roll_buffer = deque(maxlen=10)  # ~320ms of audio at 48kHz
     silence_counter = 0
-    SILENCE_THRESHOLD_CHUNKS = 16
+    SILENCE_THRESHOLD_CHUNKS = 15  # ~480ms
     
     transmission_mode = JanusMode.SEMANTIC_VOICE
     override_emotion = "Auto"
     
     previous_hold_state = False
+    chunk_counter = 0
     
+    def process_and_transmit(audio_data: np.ndarray, current_transmission_mode, current_override_emotion):
+        """Helper to process audio in a background thread."""
+        try:
+            if len(audio_data) < 1536 * 6:
+                logger.debug(f"Skipping short audio buffer ({len(audio_data)} samples)")
+                return
+
+            duration_sec = len(audio_data) / audio_service.SAMPLE_RATE
+            logger.info(f"Processing audio buffer ({len(audio_data)} samples, {duration_sec:.2f}s)...")
+            try:
+                text = transcriber.transcribe_buffer(audio_data)
+            except Exception as e:
+                logger.error(f"Transcription error: {e}")
+                text = ""
+            
+            if not text.strip():
+                logger.info("No speech detected in audio buffer.")
+                return
+
+            try:
+                meta = prosody_tool.analyze_buffer(audio_data)
+            except Exception as e:
+                logger.error(f"Prosody extraction error: {e}")
+                meta = {'energy': 'Normal', 'pitch': 'Normal'}
+            
+            logger.info(f"Captured: '{text}' | Tone: {meta}")
+            
+            try:
+                packet = JanusPacket(
+                    text=text,
+                    mode=current_transmission_mode,
+                    prosody=meta,
+                    override_emotion=current_override_emotion
+                )
+                link_simulator.transmit(packet.serialize())
+            except Exception as e:
+                logger.error(f"Packet transmission error: {e}")
+        except Exception as e:
+            logger.error(f"Error in background processing: {e}")
+
     while not stop_event.is_set():
         try:
             try:
                 chunk = audio_queue.get(timeout=0.1)
             except queue.Empty:
                 continue
+            
+            chunk_counter += 1
+            if chunk_counter % 100 == 0:
+                # logger.info(f"Audio consumer heartbeat: Processed {chunk_counter} chunks (Mock mode: {'Yes' if not audio_service._pyaudio_available else 'No'})")
             
             trigger_processing = False
             
@@ -109,6 +158,7 @@ def audio_consumer(
                 continue
             
             if previous_hold_state and not is_recording_hold:
+                logger.info("PTT Released - triggering processing.")
                 trigger_processing = True
                 previous_hold_state = False
             
@@ -116,15 +166,27 @@ def audio_consumer(
                 is_speech = vad_model.is_speech(chunk)
                 
                 if is_speech:
+                    if len(audio_buffer) == 0:
+                        logger.info("Speech detected - start buffering (with pre-roll).")
+                        # Prepend the pre-roll history
+                        audio_buffer.extend(list(pre_roll_buffer))
+                    
                     audio_buffer.append(chunk)
                     silence_counter = 0
                 else:
                     silence_counter += 1
                     if len(audio_buffer) > 0:
                         audio_buffer.append(chunk)
+                    else:
+                        # Keep pre-roll updated while waiting for speech
+                        pre_roll_buffer.append(chunk)
                     
                     if silence_counter > SILENCE_THRESHOLD_CHUNKS:
-                        trigger_processing = True
+                        if len(audio_buffer) > 0:
+                            logger.info(f"Silence threshold reached ({silence_counter} chunks) - triggering processing.")
+                            trigger_processing = True
+                        else:
+                            silence_counter = 0 # Reset without trigger
             
             else:
                 audio_queue.task_done()
@@ -132,44 +194,16 @@ def audio_consumer(
             
             if trigger_processing and len(audio_buffer) > 0:
                 combined_audio = np.concatenate(audio_buffer)
-                
-                try:
-                    text = transcriber.transcribe_buffer(combined_audio)
-                except Exception as e:
-                    logger.error(f"Transcription error: {e}")
-                    text = ""
-                
-                try:
-                    meta = prosody_tool.analyze_buffer(combined_audio)
-                except Exception as e:
-                    logger.error(f"Prosody extraction error: {e}")
-                    meta = {'energy': 'Normal', 'pitch': 'Normal'}
-                
                 audio_buffer = []
                 silence_counter = 0
                 
-                while not audio_queue.empty():
-                    try:
-                        audio_queue.get_nowait()
-                        audio_queue.task_done()
-                    except queue.Empty:
-                        break
-                
-                if text.strip():
-                    logger.info(f"Captured: '{text}' | Tone: {meta}")
-                
-                if text.strip():
-                    try:
-                        packet = JanusPacket(
-                            text=text,
-                            mode=transmission_mode,
-                            prosody=meta,
-                            override_emotion=override_emotion
-                        )
-                        serialized_bytes = packet.serialize()
-                        link_simulator.transmit(serialized_bytes)
-                    except Exception as e:
-                        logger.error(f"Packet transmission error: {e}")
+                # Submit to executor instead of blocking
+                executor.submit(
+                    process_and_transmit, 
+                    combined_audio, 
+                    transmission_mode, 
+                    override_emotion
+                )
             
             audio_queue.task_done()
             
@@ -217,6 +251,8 @@ def main_loop(stop_event: threading.Event | None = None) -> None:
     else:
         use_keyboard_interrupt = False
     
+    executor = ThreadPoolExecutor(max_workers=2)
+
     producer_thread = threading.Thread(
         target=audio_producer,
         args=(audio_service, audio_queue, stop_event),
@@ -226,7 +262,7 @@ def main_loop(stop_event: threading.Event | None = None) -> None:
     
     consumer_thread = threading.Thread(
         target=audio_consumer,
-        args=(audio_service, vad_model, transcriber, prosody_tool, link_simulator, audio_queue, stop_event),
+        args=(audio_service, vad_model, transcriber, prosody_tool, link_simulator, audio_queue, executor, stop_event),
         daemon=True
     )
     consumer_thread.start()
@@ -250,6 +286,7 @@ def main_loop(stop_event: threading.Event | None = None) -> None:
     stop_event.set()
     producer_thread.join(timeout=2)
     consumer_thread.join(timeout=2)
+    executor.shutdown(wait=False)
     audio_service.close()
     link_simulator.close()
     logger.info("Shutdown complete.")
