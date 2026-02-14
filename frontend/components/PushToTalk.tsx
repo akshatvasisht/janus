@@ -62,11 +62,10 @@ export default function PushToTalk({
     <div className="flex flex-col items-center justify-center w-full">
       <Button
         size="lg"
-        className={`w-48 h-48 transition-all border-4 border-black rounded-none ${
-          isRecording
+        className={`w-48 h-48 transition-all border-4 border-black rounded-none ${isRecording || isStreaming
             ? 'bg-red-500 hover:bg-red-600 text-white shadow-none translate-x-[4px] translate-y-[4px]'
             : 'bg-white hover:bg-gray-100 text-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px]'
-        }`}
+          }`}
         disabled={disabled}
         aria-pressed={isRecording}
         aria-label={`Push to talk. Streaming ${isStreaming ? 'enabled' : 'paused'}.`}
@@ -76,32 +75,30 @@ export default function PushToTalk({
         onTouchStart={
           !disabled
             ? (e) => {
-                e.preventDefault();
-                debouncedHoldStart();
-              }
+              e.preventDefault();
+              debouncedHoldStart();
+            }
             : undefined
         }
         onTouchEnd={
           !disabled
             ? (e) => {
-                e.preventDefault();
-                debouncedHoldEnd();
-              }
+              e.preventDefault();
+              debouncedHoldEnd();
+            }
             : undefined
         }
       >
         <div className="flex flex-col items-center gap-2">
           <Mic
-            className={`w-16 h-16 ${
-              isRecording ? 'text-white' : 'text-black'
-            }`}
+            className={`w-16 h-16 ${isRecording || isStreaming ? 'text-white' : 'text-black'
+              }`}
           />
           <span
-            className={`text-xs font-bold tracking-widest ${
-              isRecording ? 'text-white' : 'text-black'
-            }`}
+            className={`text-xs font-bold tracking-widest ${isRecording || isStreaming ? 'text-white' : 'text-black'
+              }`}
           >
-            {isRecording ? 'TRANSMITTING' : 'PUSH TO TALK'}
+            {isRecording || isStreaming ? 'TRANSMITTING' : 'PUSH TO TALK'}
           </span>
         </div>
       </Button>

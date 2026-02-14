@@ -147,7 +147,7 @@ def audio_consumer(
             
             chunk_counter += 1
             if chunk_counter % 100 == 0:
-                # logger.info(f"Audio consumer heartbeat: Processed {chunk_counter} chunks (Mock mode: {'Yes' if not audio_service._pyaudio_available else 'No'})")
+                logger.info(f"Audio consumer heartbeat: Processed {chunk_counter} chunks (Mock mode: {'Yes' if not audio_service._pyaudio_available else 'No'})")
             
             trigger_processing = False
             

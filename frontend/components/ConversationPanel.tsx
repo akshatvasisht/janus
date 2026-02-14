@@ -52,7 +52,7 @@ export default function ConversationPanel({
             )}
             {!lastMessage && (
               <div className="text-muted-foreground italic text-sm">
-                No voice data received yet. Press PTT to speak.
+                No voice data received yet. Press PTT to speak or S to Stream.
               </div>
             )}
           </div>
@@ -81,11 +81,10 @@ export default function ConversationPanel({
                       {displayTime}
                     </div>
                     <div
-                      className={`p-2 border-2 border-black text-sm font-mono shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${
-                        isAssistant
+                      className={`p-2 border-2 border-black text-sm font-mono shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${isAssistant
                           ? 'text-foreground bg-muted'
                           : 'text-foreground bg-white'
-                      }`}
+                        }`}
                     >
                       {msg.text}
                     </div>

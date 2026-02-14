@@ -50,7 +50,7 @@ export default function NetworkLog({ packets }: NetworkLogProps) {
         ))}
         {entries.length === 0 && (
           <div className="text-muted-foreground italic py-4 text-center">
-            No packets transmitted yet.
+            No packets in history. Transmissions appear here.
           </div>
         )}
       </div>
