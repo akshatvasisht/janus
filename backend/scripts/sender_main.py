@@ -90,7 +90,7 @@ def audio_consumer(
     audio_buffer = []
     pre_roll_buffer = deque(maxlen=10)  # ~320ms of audio at 48kHz
     silence_counter = 0
-    SILENCE_THRESHOLD_CHUNKS = 15  # ~480ms
+    SILENCE_THRESHOLD_CHUNKS = 7  # ~224ms (Optimized from 15 chunks/480ms for latency)
     
     transmission_mode = JanusMode.SEMANTIC_VOICE
     override_emotion = "Auto"
@@ -98,8 +98,17 @@ def audio_consumer(
     previous_hold_state = False
     chunk_counter = 0
     
-    def process_and_transmit(audio_data: np.ndarray, current_transmission_mode, current_override_emotion):
-        """Helper to process audio in a background thread."""
+    def process_and_transmit(audio_data: np.ndarray, current_transmission_mode: getattr(sys.modules[__name__], 'JanusMode', Any), current_override_emotion: str | None) -> None:
+        """Process chunk and transmit based on mode.
+        
+        Args:
+            audio_data: Numpy array of audio to transmit.
+            current_transmission_mode: Active Janus transmission mode.
+            current_override_emotion: String emotion override, or None/Auto.
+            
+        Returns:
+            None
+        """
         try:
             if len(audio_data) < 1536 * 6:
                 logger.debug(f"Skipping short audio buffer ({len(audio_data)} samples)")
@@ -146,8 +155,9 @@ def audio_consumer(
                 continue
             
             chunk_counter += 1
-            if chunk_counter % 100 == 0:
-                logger.info(f"Audio consumer heartbeat: Processed {chunk_counter} chunks (Mock mode: {'Yes' if not audio_service._pyaudio_available else 'No'})")
+            if chunk_counter % 500 == 0:
+                is_mock = not getattr(audio_service, "_pyaudio_available", True)
+                logger.info(f"Audio consumer heartbeat: Processed {chunk_counter} chunks (Mock mode: {'Yes' if is_mock else 'No'})")
             
             trigger_processing = False
             
