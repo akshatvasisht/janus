@@ -8,6 +8,7 @@ This is the local-only implementation using Qwen3-TTS via `ModelManager`.
 
 import logging
 from pathlib import Path
+from typing import Generator, Union
 
 import numpy as np
 
@@ -44,7 +45,7 @@ class Synthesizer:
             self.reference_audio_path = str(backend_dir / "assets" / "enrollment.wav")
 
         # Singleton model manager (loads once, shared across Synthesizer instances).
-        # Unit tests should patch ModelManager.generate (or set JANUS_QWEN3_TTS_DRY_RUN=1).
+        # Unit tests should patch ModelManager.generate or its initialization.
         self.model_manager = ModelManager(ref_audio_path=self.reference_audio_path)
 
         # Define Morse Code Dictionary (A=.-, B=-..., etc)
@@ -88,7 +89,9 @@ class Synthesizer:
             " ": " ",  # Space between words
         }
 
-    def synthesize(self, packet: JanusPacket) -> bytes:
+    def synthesize(
+        self, packet: JanusPacket, stream: bool = False
+    ) -> Union[bytes, Generator[bytes, None, None]]:
         """
         Generate PCM audio bytes for a packet.
 
@@ -105,11 +108,15 @@ class Synthesizer:
             instruction = None
             if packet.override_emotion and packet.override_emotion != "Auto":
                 instruction = f"[Instruction: {packet.override_emotion}] "
-            return self._generate_local_tts(packet.text, instruction=instruction)
+            return self._generate_local_tts(
+                packet.text, instruction=instruction, stream=stream
+            )
 
         if packet.mode == JanusMode.SEMANTIC_VOICE:
             instruction = self._instruction_from_packet(packet)
-            return self._generate_local_tts(packet.text, instruction=instruction)
+            return self._generate_local_tts(
+                packet.text, instruction=instruction, stream=stream
+            )
 
         raise ValueError(f"Unknown packet mode: {packet.mode}")
 
@@ -134,87 +141,98 @@ class Synthesizer:
             return "[Instruction: Quiet] "
         return None
 
-    def _generate_local_tts(self, text: str, *, instruction: str | None) -> bytes:
+    def _generate_local_tts(
+        self, text: str, *, instruction: str | None, stream: bool = False
+    ) -> Union[bytes, Generator[bytes, None, None]]:
         """
         Local Qwen3-TTS generation. Returns raw int16 PCM bytes at 44.1kHz.
         """
-        prompt = (f"{instruction or ''}{text}").strip()
+        # Qwen3-TTS Voice Clone Base models do not process "[Instruction: ...]" 
+        # tags gracefully like its Voice Design counterpart; it reads them literally.
+        # We process the text strictly as it is transcribed. 
+        prompt = text.strip()
         if not prompt:
-            return b""
+            return b"" if not stream else (chunk for chunk in [b""])
 
         try:
-            return self.model_manager.generate(prompt, ref_audio_path=self.reference_audio_path)
+            if stream:
+                return self.model_manager.generate_stream(
+                    prompt, ref_audio_path=self.reference_audio_path
+                )
+            return self.model_manager.generate(
+                prompt, ref_audio_path=self.reference_audio_path
+            )
         except Exception as exc:
             logger.error("Local TTS synthesis error: %s", exc)
-            return b""
+            return b"" if not stream else (chunk for chunk in [b""])
 
     def _generate_morse_audio(self, text: str) -> bytes:
         """
         Generates Morse code audio from text using sine wave tones.
-        
+
         Converts text characters to Morse code patterns and generates corresponding
         audio tones. Dots (.) produce 0.1s tones, dashes (-) produce 0.3s tones,
         both at 800Hz. Appropriate silence is inserted between symbols, letters,
         and words.
-        
+
         Args:
             text: Text string to convert to Morse code audio.
-        
+
         Returns:
             bytes: Raw PCM audio data (int16 format) ready for PyAudio playback.
                 Returns empty bytes if text is empty or contains no valid characters.
         """
         audio_segments = []
-        
+
         # Convert text to uppercase for morse code lookup
         text_upper = text.upper()
-        
+
         for char in text_upper:
             if char in self.morse_code_dict:
                 pattern = self.morse_code_dict[char]
-                
+
                 # Handle space (word separator)
-                if pattern == ' ':
+                if pattern == " ":
                     # Add longer silence between words (0.7s)
                     silence_samples = int(0.7 * SAMPLE_RATE)
                     audio_segments.append(np.zeros(silence_samples, dtype=np.int16))
                     continue
-                
+
                 # Generate audio for each dot/dash in the pattern
                 for i, symbol in enumerate(pattern):
-                    if symbol == '.':
+                    if symbol == ".":
                         # Dot: 0.1s tone
                         duration = 0.1
-                    elif symbol == '-':
+                    elif symbol == "-":
                         # Dash: 0.3s tone
                         duration = 0.3
                     else:
                         continue
-                    
+
                     # Generate sine wave
                     samples = int(duration * SAMPLE_RATE)
                     t = np.linspace(0, duration, samples, False)
                     wave = np.sin(2 * np.pi * MORSE_FREQUENCY * t)
-                    
+
                     # Convert to int16 and scale
                     wave_int16 = (wave * 32767 * 0.5).astype(np.int16)
                     audio_segments.append(wave_int16)
-                    
+
                     # Add silence between symbols (0.1s) except after last symbol
                     if i < len(pattern) - 1:
                         silence_samples = int(0.1 * SAMPLE_RATE)
                         audio_segments.append(np.zeros(silence_samples, dtype=np.int16))
-                
+
                 # Add silence between letters (0.3s) except after last character
                 if char != text_upper[-1]:
                     silence_samples = int(0.3 * SAMPLE_RATE)
                     audio_segments.append(np.zeros(silence_samples, dtype=np.int16))
-        
+
         # Concatenate all segments
         if audio_segments:
             audio_array = np.concatenate(audio_segments)
         else:
             audio_array = np.array([], dtype=np.int16)
-        
+
         # Convert to bytes
         return audio_array.tobytes()

@@ -23,29 +23,39 @@ class SentenceBuffer:
     - `flush()` emits any remaining buffered text (used for end-of-packet).
     """
 
-    _END_TOKENS = {".", "?", "!", "\n"}
+    _HARD_END_TOKENS = {".", "?", "!", "\n"}
+    _WEAK_END_TOKENS = {",", ";", ":", "-", "—"}
+    _MIN_CHUNK_LENGTH = 30  # At least 30 chars before splitting on weak marks
 
     def __init__(self) -> None:
         self._buf: str = ""
 
     def add_token(self, token: str) -> Optional[str]:
         """
-        Append a token and optionally emit a completed sentence.
+        Append a token and optionally emit a completed sentence chunk.
+
+        Splits immediately on hard punctuation (e.g., '.', '?').
+        Splits on weak punctuation (e.g., ',') ONLY if the accumulated buffer
+        meets the minimum length threshold, preserving prosody.
 
         Args:
             token: Next token (character or word) to append.
 
         Returns:
-            The completed sentence string if token ended the sentence (e.g. '.', '?', '!');
-            None otherwise.
+            The completed sentence string if boundary matched; None otherwise.
         """
         if not token:
             return None
 
-        # Append raw token (works for both char-level and word-level tokenization)
+        # Append raw token
         self._buf += token
 
-        if token in self._END_TOKENS:
+        # Check hard split
+        if token in self._HARD_END_TOKENS:
+            return self.flush()
+        
+        # Check weak split if length is sufficient
+        if token in self._WEAK_END_TOKENS and len(self._buf.strip()) >= self._MIN_CHUNK_LENGTH:
             return self.flush()
 
         return None

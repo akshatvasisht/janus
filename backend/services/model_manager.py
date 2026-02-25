@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Generator
 
 import numpy as np
 import torch
@@ -43,7 +43,10 @@ class ModelManager:
     _instance: Optional["ModelManager"] = None
     _initialized: bool = False
 
-    def __new__(cls, *args: object, **kwargs: object) -> "ModelManager":
+    def __new__(cls: type["ModelManager"], *args: object, **kwargs: object) -> "ModelManager":
+        """
+        Singleton instantiation manager. Returns the existing initialized instance if available.
+        """
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
@@ -81,22 +84,6 @@ class ModelManager:
         # Default reference audio path (created if missing)
         self.ref_audio_path = ref_audio_path or self._default_ref_audio_path()
         self._ensure_reference_audio_exists(self.ref_audio_path)
-
-        # Fast path for unit tests / environments where loading is undesirable.
-        # NOTE: generate() will raise until the model is loaded.
-        if os.getenv("JANUS_QWEN3_TTS_DRY_RUN"):
-            self.device = "cpu"
-            self.torch_dtype = torch.float32
-            self.quantization_config = None
-            self.processor = None
-            self.model = None
-            self.model_sample_rate = self.output_sample_rate
-            self._initialized = True
-            logger.warning(
-                "ModelManager initialized in dry-run mode "
-                "(JANUS_QWEN3_TTS_DRY_RUN=1): model weights not loaded."
-            )
-            return
 
         # Device + dtype + optional quantization config
         (
@@ -140,7 +127,9 @@ class ModelManager:
                 preferred_kwargs["quantization_config"] = self.quantization_config
 
             try:
-                self.model = Qwen3TTSModel.from_pretrained(self.model_id, **preferred_kwargs)
+                self.model = Qwen3TTSModel.from_pretrained(
+                    self.model_id, **preferred_kwargs
+                )
             except Exception as exc:
                 # Fallback order:
                 # 1) Drop attn_implementation (some builds may not support it)
@@ -153,13 +142,17 @@ class ModelManager:
                 if self.quantization_config is not None:
                     retry_kwargs["quantization_config"] = self.quantization_config
                 try:
-                    self.model = Qwen3TTSModel.from_pretrained(self.model_id, **retry_kwargs)
+                    self.model = Qwen3TTSModel.from_pretrained(
+                        self.model_id, **retry_kwargs
+                    )
                 except Exception as exc2:
                     logger.warning(
                         "qwen-tts quantized load failed (%s). Retrying without quantization.",
                         exc2,
                     )
-                    self.model = Qwen3TTSModel.from_pretrained(self.model_id, **base_kwargs)
+                    self.model = Qwen3TTSModel.from_pretrained(
+                        self.model_id, **base_kwargs
+                    )
 
             logger.info("Loaded Qwen3-TTS via qwen-tts backend.")
         except Exception as exc:
@@ -202,13 +195,17 @@ class ModelManager:
                     inner = getattr(self.model, "model", None)
                     if inner is not None:
                         self.model.model = torch.compile(inner, mode="reduce-overhead")
-                        logger.info("torch.compile enabled for Qwen3-TTS (qwen-tts backend).")
+                        logger.info(
+                            "torch.compile enabled for Qwen3-TTS (qwen-tts backend)."
+                        )
                     else:
                         logger.warning(
                             "torch.compile skipped: qwen-tts wrapper did not expose `.model`."
                         )
                 except Exception as exc:
-                    logger.warning("torch.compile failed, continuing without it: %s", exc)
+                    logger.warning(
+                        "torch.compile failed, continuing without it: %s", exc
+                    )
             else:
                 self._maybe_compile_model()
 
@@ -245,7 +242,7 @@ class ModelManager:
         if getattr(self, "model", None) is None:
             raise RuntimeError(
                 "ModelManager is not fully initialized (model not loaded). "
-                "Unset JANUS_QWEN3_TTS_DRY_RUN to enable real inference."
+                "Ensure local weights are accessible."
             )
 
         path = ref_audio_path or self.ref_audio_path
@@ -279,6 +276,51 @@ class ModelManager:
         audio_int16 = np.clip(audio_f32, -1.0, 1.0)
         audio_int16 = (audio_int16 * 32767.0).astype(np.int16)
         return audio_int16.tobytes()
+
+    def generate_stream(
+        self, text: str, ref_audio_path: Optional[str] = None
+    ) -> Generator[bytes, None, None]:
+        """
+        Generate voice-cloned audio as a stream of chunks.
+
+        Args:
+            text: Text to synthesize.
+            ref_audio_path: Optional override for reference audio path.
+
+        Yields:
+            bytes: Int16 PCM audio chunks resampled to `output_sample_rate`.
+        """
+        if not text:
+            return
+
+        if getattr(self, "model", None) is None:
+            raise RuntimeError(
+                "ModelManager is not fully initialized (model not loaded)."
+            )
+
+        path = ref_audio_path or self.ref_audio_path
+        if not path:
+            raise RuntimeError(
+                "ModelManager.generate_stream called without reference audio."
+            )
+        self._ensure_reference_audio_exists(path)
+
+        # Streaming is currently only supported by the 'qwen_tts' backend wrapper.
+        if self.model is None:
+            raise RuntimeError("Model is not initialized.")
+
+        if getattr(self, "backend", None) == "qwen_tts":
+            # The base Qwen3-TTS wrapper doesn't support 'stream_generate_pcm' directly natively.
+            # We must fall back to full generation since true granular streaming API isn't present
+            # in this qwen_tts version.
+            logger.warning(
+                "Streaming API not found in 'qwen_tts' backend wrapper. Falling back to full generation."
+            )
+            wav_bytes = self.generate(text, ref_audio_path)
+            yield wav_bytes
+        else:
+            # Fallback for transformers backend: yield the whole thing as one chunk
+            yield self.generate(text, ref_audio_path)
 
     # -------------------------------------------------------------------------
     # Internal helpers
@@ -327,7 +369,7 @@ class ModelManager:
 
         if torch.cuda.is_available():
             device = "cuda"
-            dtype = torch.float16
+            dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
 
             # CUDA-only 4-bit quantization via bitsandbytes
             try:
@@ -335,12 +377,10 @@ class ModelManager:
 
                 quantization_config = BitsAndBytesConfig(
                     load_in_4bit=True,
-                    bnb_4bit_compute_dtype=torch.float16,
+                    bnb_4bit_compute_dtype=dtype,
                 )
             except Exception as exc:
-                logger.warning(
-                    "bitsandbytes 4-bit quantization unavailable: %s", exc
-                )
+                logger.warning("bitsandbytes 4-bit quantization unavailable: %s", exc)
                 quantization_config = None
 
         elif getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
@@ -358,6 +398,8 @@ class ModelManager:
         """
         Try to enable SDPA / Flash Attention 2 where supported.
         """
+        if self.model is None:
+            return
         try:
             if hasattr(self.model, "config"):
                 # Some models expose attn_implementation on config
@@ -401,7 +443,7 @@ class ModelManager:
                 sr = getattr(feature_extractor, "sampling_rate", None)
 
         # Fallback to model config attributes
-        if sr is None and hasattr(self.model, "config"):
+        if sr is None and self.model is not None and hasattr(self.model, "config"):
             for attr in ("sample_rate", "audio_sample_rate"):
                 value = getattr(self.model.config, attr, None)
                 if isinstance(value, int) and value > 0:
@@ -435,9 +477,7 @@ class ModelManager:
         """
         try:
             if not self.ref_audio_path:
-                logger.warning(
-                    "Skipping warmup: no reference audio path configured."
-                )
+                logger.warning("Skipping warmup: no reference audio path configured.")
                 return
 
             logger.info("Running warmup inference for Qwen3-TTS model...")
@@ -475,17 +515,23 @@ class ModelManager:
         """
         gen_kwargs = generation_kwargs or {}
 
+        if self.model is None:
+            raise RuntimeError("Model is not initialized.")
+
         # If using qwen-tts backend, call its voice-clone API directly.
         if getattr(self, "backend", None) == "qwen_tts":
+            # Strip problematic kwargs that cause CUDA asserts in qwen_tts wrapper
+            safe_kwargs = {
+                k: v for k, v in gen_kwargs.items()
+                if k not in ("temperature", "top_p", "top_k", "repetition_penalty", "max_new_tokens", "do_sample")
+            }
             try:
                 wavs, sr = self.model.generate_voice_clone(
                     text=text,
                     ref_audio=ref_audio_path,
-                    # For Base models, ref_text is required in ICL mode.
-                    # Our default enrollment clip is synthetic and has no transcript,
-                    # so use x-vector-only cloning (speaker embedding only).
+                    ref_text=None,
                     x_vector_only_mode=True,
-                    **gen_kwargs,
+                    **safe_kwargs,
                 )
             except TypeError:
                 # Some versions may not support x_vector_only_mode kwarg
@@ -579,7 +625,7 @@ class ModelManager:
 
     def _extract_audio_from_output(
         self,
-        outputs,
+        outputs: Any,
     ) -> Tuple[np.ndarray, Optional[int]]:
         """
         Extract audio waveform and sample rate from model outputs.
@@ -617,7 +663,9 @@ class ModelManager:
             # Tuple / list: some multimodal models return (text_ids, audio) or (audio, sr)
             if isinstance(outputs, (list, tuple)) and outputs:
                 sr = None
-                if len(outputs) >= 2 and isinstance(outputs[1], (torch.Tensor, np.ndarray)):
+                if len(outputs) >= 2 and isinstance(
+                    outputs[1], (torch.Tensor, np.ndarray)
+                ):
                     audio = outputs[1]
                 else:
                     audio = outputs[0]
@@ -652,4 +700,3 @@ class ModelManager:
 
 
 __all__ = ["ModelManager"]
-

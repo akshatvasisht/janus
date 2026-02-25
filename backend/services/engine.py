@@ -8,7 +8,7 @@ import threading
 import time
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Generator
 
 import numpy as np
 
@@ -24,7 +24,7 @@ from .transcriber import Transcriber
 from .vad import VoiceActivityDetector
 
 if TYPE_CHECKING:
-    from types import ModuleType
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -32,19 +32,19 @@ logger = logging.getLogger(__name__)
 def recv_exact(sock: socket.socket, n: int) -> bytes | None:
     """
     Helper function to receive exactly n bytes from a socket.
-    
+
     Handles fragmented reads that can occur with TCP by repeatedly reading
     until the requested number of bytes is received.
-    
+
     Args:
         sock: The socket to read from.
         n: Number of bytes to read.
-        
+
     Returns:
         bytes | None: Exactly n bytes, or None if connection is closed
             before all bytes are received.
     """
-    data = b''
+    data = b""
     while len(data) < n:
         packet = sock.recv(n - len(data))
         if not packet:
@@ -60,16 +60,16 @@ def playback_worker(
 ) -> None:
     """
     Playback thread worker function.
-    
+
     Continuously pulls audio bytes from queue and plays them. Prevents blocking
     the main receiver loop by running in a separate thread.
-    
+
     Args:
         audio_service: AudioService instance for playback.
         playback_queue: Queue containing audio bytes to play.
         stop_event: Threading event to signal shutdown. Worker exits when
             this event is set.
-    
+
     Returns:
         None
     """
@@ -79,20 +79,27 @@ def playback_worker(
                 audio_bytes = playback_queue.get(timeout=0.1)
             except queue.Empty:
                 continue
-            
+
             if audio_bytes:
-                from ..common import engine_state as _engine_state  # local import to avoid cycles
-                audio_bytes = apply_ducking_if_needed(audio_bytes, _engine_state.control_state)
+                from ..common import (
+                    engine_state as _engine_state,
+                )  # local import to avoid cycles
+
+                audio_bytes = apply_ducking_if_needed(
+                    audio_bytes, _engine_state.control_state
+                )
                 audio_service.write_chunk(audio_bytes)
-            
+
             playback_queue.task_done()
-            
+
         except Exception as e:
             logger.error(f"Playback error: {e}")
             playback_queue.task_done()
 
 
-def apply_ducking_if_needed(audio_bytes: bytes, state: "engine_state.ControlState") -> bytes:
+def apply_ducking_if_needed(
+    audio_bytes: bytes, state: "engine_state.ControlState"
+) -> bytes:
     """
     Apply audio ducking based on shared control state.
 
@@ -128,7 +135,9 @@ def apply_ducking_if_needed(audio_bytes: bytes, state: "engine_state.ControlStat
         if samples.size == 0:
             return audio_bytes
 
-        scaled = np.clip(samples.astype(np.float32) * level, -32768, 32767).astype(np.int16)
+        scaled = np.clip(samples.astype(np.float32) * level, -32768, 32767).astype(
+            np.int16
+        )
         return scaled.tobytes()
     except Exception as e:
         logger.error(f"Error applying ducking: {e}")
@@ -142,33 +151,33 @@ def receiver_loop(
 ) -> None:
     """
     Receiver loop for full-duplex audio.
-    
+
     Listens for TCP connections, receives JanusPackets, synthesizes audio, and plays it.
     Runs in a separate thread to avoid blocking the main event loop.
-    
+
     Args:
         audio_service: Shared AudioService instance for playback.
         stop_event: Threading event to signal shutdown. Loop exits when set.
         event_loop: asyncio event loop for emitting events to frontend.
-    
+
     Returns:
         None
     """
     receiver_port = int(os.getenv("RECEIVER_PORT", "5005"))
     reference_audio_path = os.getenv("REFERENCE_AUDIO_PATH", None)
-    
+
     try:
         synthesizer = Synthesizer(reference_audio_path=reference_audio_path)
     except Exception as e:
         logger.error(f"Failed to initialize Synthesizer: {e}")
         return
-    
+
     listen_sock = None
     sock = None
     try:
         listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         listen_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        listen_sock.bind(('0.0.0.0', receiver_port))
+        listen_sock.bind(("0.0.0.0", receiver_port))
         listen_sock.listen(1)
         logger.info(f"Listening for Transmissions on TCP port {receiver_port}...")
         sock, addr = listen_sock.accept()
@@ -179,14 +188,14 @@ def receiver_loop(
         if listen_sock:
             listen_sock.close()
         return
-    
-    playback_queue = queue.Queue(maxsize=100)
+
+    playback_queue: queue.Queue[bytes] = queue.Queue(maxsize=100)
     playback_stop_event = threading.Event()
-    
+
     playback_thread = threading.Thread(
         target=playback_worker,
         args=(audio_service, playback_queue, playback_stop_event),
-        daemon=True
+        daemon=True,
     )
     playback_thread.start()
 
@@ -197,18 +206,18 @@ def receiver_loop(
                     length_bytes = recv_exact(sock, 4)
                 except socket.timeout:
                     continue
-                
+
                 if length_bytes is None:
                     logger.info("Connection closed by sender")
                     break
-                
-                payload_length = struct.unpack('>I', length_bytes)[0]
-                
+
+                payload_length = struct.unpack(">I", length_bytes)[0]
+
                 try:
                     data = recv_exact(sock, payload_length)
                 except socket.timeout:
                     continue
-                
+
                 if data is None:
                     logger.info("Connection closed while reading packet")
                     break
@@ -221,30 +230,40 @@ def receiver_loop(
                 try:
                     transcript_queue = engine_state.get_transcript_queue()
                     packet_queue = engine_state.get_packet_queue()
-                    
+
                     api_mode = map_protocol_mode_to_api_mode(packet.mode)
-                    
+
                     prosody = packet.prosody or {}
-                    avg_pitch_hz = prosody.get('avg_pitch_hz') if isinstance(prosody.get('avg_pitch_hz'), (int, float)) else None
-                    avg_energy = prosody.get('avg_energy') if isinstance(prosody.get('avg_energy'), (int, float)) else None
-                    
+                    val_pitch = prosody.get("avg_pitch_hz")
+                    avg_pitch_hz = (
+                        float(val_pitch)
+                        if isinstance(val_pitch, (int, float))
+                        else None
+                    )
+                    val_energy = prosody.get("avg_energy")
+                    avg_energy = (
+                        float(val_energy)
+                        if isinstance(val_energy, (int, float))
+                        else None
+                    )
+
                     if packet.override_emotion != "Auto":
                         emotion_tag = packet.override_emotion
                     else:
                         prosody = packet.prosody
-                        pitch = prosody.get('pitch', 'Normal')
-                        energy = prosody.get('energy', 'Normal')
-                        
-                        if pitch == 'High' and energy == 'Loud':
-                            emotion_tag = 'Excited'
-                        elif pitch == 'High' and energy == 'Normal':
-                            emotion_tag = 'Joyful'
-                        elif pitch == 'Low' and energy == 'Loud':
-                            emotion_tag = 'Panicked'
-                        elif pitch == 'Low' and energy in ('Quiet', 'Low'):
-                            emotion_tag = 'Serious'
+                        pitch = prosody.get("pitch", "Normal")
+                        energy = prosody.get("energy", "Normal")
+
+                        if pitch == "High" and energy == "Loud":
+                            emotion_tag = "Excited"
+                        elif pitch == "High" and energy == "Normal":
+                            emotion_tag = "Joyful"
+                        elif pitch == "Low" and energy == "Loud":
+                            emotion_tag = "Panicked"
+                        elif pitch == "Low" and energy in ("Quiet", "Low"):
+                            emotion_tag = "Serious"
                         else:
-                            emotion_tag = 'Neutral'
+                            emotion_tag = "Neutral"
 
                     asyncio.run_coroutine_threadsafe(
                         _emit_events(
@@ -256,25 +275,30 @@ def receiver_loop(
                             packet_queue=packet_queue,
                             emotion=emotion_tag,
                         ),
-                        event_loop
+                        event_loop,
                     )
                 except Exception as e:
                     logger.error(f"Failed to emit events to frontend: {e}")
-                
+
                 mode_names = {
                     ProtocolJanusMode.SEMANTIC_VOICE: "Semantic Voice",
                     ProtocolJanusMode.TEXT_ONLY: "Text Only",
-                    ProtocolJanusMode.MORSE_CODE: "Morse Code"
+                    ProtocolJanusMode.MORSE_CODE: "Morse Code",
                 }
                 mode_name = mode_names.get(packet.mode, "Unknown")
-                
+
                 logger.info(f"[RECEIVED] [{mode_name}] '{packet.text}'")
-                logger.debug(f"   Meta: Energy={packet.prosody.get('energy', 'N/A')}, "
-                      f"Pitch={packet.prosody.get('pitch', 'N/A')} -> Prompt: [{emotion_tag}]")
+                logger.debug(
+                    f"   Meta: Energy={packet.prosody.get('energy', 'N/A')}, "
+                    f"Pitch={packet.prosody.get('pitch', 'N/A')} -> Prompt: [{emotion_tag}]"
+                )
 
                 try:
                     # Sentence-level buffering for text modes; Morse is stateless.
-                    if packet.mode in (ProtocolJanusMode.SEMANTIC_VOICE, ProtocolJanusMode.TEXT_ONLY):
+                    if packet.mode in (
+                        ProtocolJanusMode.SEMANTIC_VOICE,
+                        ProtocolJanusMode.TEXT_ONLY,
+                    ):
                         buffer = SentenceBuffer()
                         sentences: list[str] = []
                         for token in iter_text_tokens(packet.text):
@@ -299,20 +323,41 @@ def receiver_loop(
                                 timestamp=packet.timestamp,
                             )
                             try:
-                                audio_bytes = synthesizer.synthesize(sub_packet)
+                                # Enable streaming for voice modes to reduce TTFB
+                                result = synthesizer.synthesize(sub_packet, stream=True)
+                                if isinstance(result, Generator):
+                                    for audio_chunk in result:
+                                        if audio_chunk:
+                                            try:
+                                                playback_queue.put(
+                                                    audio_chunk, timeout=0.1
+                                                )
+                                            except queue.Full:
+                                                logger.warning(
+                                                    "Warning: Playback queue full, skipping chunk"
+                                                )
+                                else:
+                                    # Fallback for non-streaming or bytes return
+                                    if result:
+                                        try:
+                                            playback_queue.put(result, timeout=0.1)
+                                        except queue.Full:
+                                            logger.warning(
+                                                "Warning: Playback queue full, skipping audio"
+                                            )
                             except Exception as e:
                                 logger.error(f"Synthesis error: {e}")
                                 continue
+                    else:
+                        # Non-text modes (e.g. Morse) still use blocking synthesize for now
+                        audio_bytes = synthesizer.synthesize(packet)
+                        if isinstance(audio_bytes, bytes) and audio_bytes:
                             try:
                                 playback_queue.put(audio_bytes, timeout=0.1)
                             except queue.Full:
-                                logger.warning("Warning: Playback queue full, skipping audio chunk")
-                    else:
-                        audio_bytes = synthesizer.synthesize(packet)
-                        try:
-                            playback_queue.put(audio_bytes, timeout=0.1)
-                        except queue.Full:
-                            logger.warning("Warning: Playback queue full, skipping audio chunk")
+                                logger.warning(
+                                    "Warning: Playback queue full, skipping audio"
+                                )
                 except Exception as e:
                     logger.error(f"Receiver synthesis pipeline error: {e}")
 
@@ -321,12 +366,12 @@ def receiver_loop(
             except Exception as e:
                 logger.error(f"Receiver socket error: {e}")
                 break
-    
+
     finally:
         logger.info("Shutting down receiver loop...")
         playback_stop_event.set()
         playback_thread.join(timeout=2)
-        
+
         if sock:
             try:
                 sock.close()
@@ -337,17 +382,17 @@ def receiver_loop(
                 listen_sock.close()
             except Exception:
                 pass
-        
+
         logger.info("Receiver loop shutdown complete.")
 
 
 def map_api_mode_to_protocol_mode(api_mode: JanusMode) -> ProtocolJanusMode:
     """
     Map API JanusMode (string enum) to Protocol JanusMode (int enum).
-    
+
     Args:
         api_mode: JanusMode from api.types (string enum)
-        
+
     Returns:
         ProtocolJanusMode: JanusMode from common.protocol (int enum)
     """
@@ -362,10 +407,10 @@ def map_api_mode_to_protocol_mode(api_mode: JanusMode) -> ProtocolJanusMode:
 def map_protocol_mode_to_api_mode(protocol_mode: ProtocolJanusMode) -> JanusMode:
     """
     Map Protocol JanusMode (int enum) back to API JanusMode (string enum).
-    
+
     Args:
         protocol_mode: ProtocolJanusMode from common.protocol (int enum)
-        
+
     Returns:
         JanusMode: JanusMode from api.types (string enum)
     """
@@ -384,15 +429,15 @@ def audio_producer(
 ) -> None:
     """
     Audio producer thread worker function.
-    
+
     Continuously reads audio chunks from the audio service and places them
     in the queue for processing. Runs until stop_event is set.
-    
+
     Args:
         audio_service: AudioService instance for reading audio input.
         audio_queue: Queue for storing audio chunks (numpy arrays).
         stop_event: Threading event to signal shutdown. Producer exits when set.
-    
+
     Returns:
         None
     """
@@ -416,18 +461,18 @@ async def smart_ear_loop(
 ) -> None:
     """
     Main Smart Ear engine loop for real-time audio processing.
-    
+
     Processes audio input using VAD, transcription, and prosody extraction.
     Responds to control state changes from the frontend and emits transcript
     and packet summary events. Runs asynchronously to avoid blocking the
     main event loop.
-    
+
     Args:
         control_state: Shared control state updated by WebSocket messages.
         transcript_queue: Async queue for emitting transcript messages to frontend.
         packet_queue: Async queue for emitting packet summary messages to frontend.
         audio_service: Shared AudioService instance for audio input capture.
-    
+
     Returns:
         None
     """
@@ -443,10 +488,16 @@ async def smart_ear_loop(
 
         target_ip = os.getenv("TARGET_IP", "127.0.0.1")
         target_port = int(os.getenv("TARGET_PORT", "5005"))
-        use_tcp = "ngrok" in target_ip.lower() or os.getenv("USE_TCP", "").lower() == "true"
-        
-        logger.info(f"Link Simulator: {target_ip}:{target_port} ({'TCP' if use_tcp else 'UDP'})")
-        link_simulator = LinkSimulator(target_ip=target_ip, target_port=target_port, use_tcp=use_tcp)
+        use_tcp = (
+            "ngrok" in target_ip.lower() or os.getenv("USE_TCP", "").lower() == "true"
+        )
+
+        logger.info(
+            f"Link Simulator: {target_ip}:{target_port} ({'TCP' if use_tcp else 'UDP'})"
+        )
+        link_simulator = LinkSimulator(
+            target_ip=target_ip, target_port=target_port, use_tcp=use_tcp
+        )
 
         logger.info("Smart Ear services ready.")
 
@@ -454,7 +505,7 @@ async def smart_ear_loop(
         logger.error(f"Failed to initialize Smart Ear services: {e}")
         return
 
-    audio_queue = queue.Queue(maxsize=100)
+    audio_queue: queue.Queue[np.ndarray] = queue.Queue(maxsize=100)
     stop_event = threading.Event()
 
     producer_thread = threading.Thread(
@@ -464,8 +515,8 @@ async def smart_ear_loop(
     )
     producer_thread.start()
 
-    audio_buffer = []
-    pre_roll_buffer = deque(maxlen=10)
+    audio_buffer: list[np.ndarray] = []
+    pre_roll_buffer: deque[np.ndarray] = deque(maxlen=10)
     silence_counter = 0
     SILENCE_THRESHOLD_CHUNKS = 15  # ~500ms
     previous_hold_state = False
@@ -499,14 +550,19 @@ async def smart_ear_loop(
 
             elif is_streaming_mode:
                 # Bypass VAD gating for Morse and Text modes to avoid blocking non-semantic transmissions
-                is_non_vad_mode = control_state.mode in [JanusMode.MORSE, JanusMode.TEXT_ONLY]
+                is_non_vad_mode = control_state.mode in [
+                    JanusMode.MORSE,
+                    JanusMode.TEXT_ONLY,
+                ]
                 is_speech = vad_model.is_speech(chunk) or is_non_vad_mode
 
                 if is_speech:
                     if len(audio_buffer) == 0:
-                        logger.info(f"Transmission started (mode={control_state.mode}, speech={not is_non_vad_mode})")
+                        logger.info(
+                            f"Transmission started (mode={control_state.mode}, speech={not is_non_vad_mode})"
+                        )
                         audio_buffer.extend(list(pre_roll_buffer))
-                    
+
                     control_state.is_talking = True
                     audio_buffer.append(chunk)
                     silence_counter = 0
@@ -531,12 +587,26 @@ async def smart_ear_loop(
                 silence_counter = 0
 
                 if len(combined_audio) < 1536 * 6:
-                    logger.info(f"Skipping short audio buffer ({len(combined_audio)} samples)")
+                    logger.info(
+                        f"Skipping short audio buffer ({len(combined_audio)} samples)"
+                    )
                     continue
 
                 duration_sec = len(combined_audio) / audio_service.SAMPLE_RATE
-                logger.info(f"Processing audio buffer ({len(combined_audio)} samples, {duration_sec:.2f}s)...")
-                def process_audio_blocking(audio_data):
+                logger.info(
+                    f"Processing audio buffer ({len(combined_audio)} samples, {duration_sec:.2f}s)..."
+                )
+
+                def process_audio_blocking(audio_data: np.ndarray) -> None:
+                    """
+                    Synchronously transcribes audio and extracts prosody metadata.
+                    
+                    Args:
+                        audio_data: The numpy array containing the raw PCM chunk to process.
+                        
+                    Returns:
+                        None
+                    """
                     t_text = ""
                     t_meta = {}
                     try:
@@ -565,14 +635,22 @@ async def smart_ear_loop(
                 if text.strip():
                     logger.info(f"Captured: '{text}' | Tone: {meta}")
 
-                    def transmit_packet_blocking():
+                    def transmit_packet_blocking() -> None:
+                        """
+                        Synchronously generates and transmits the final Janus command packet over the socket.
+                        
+                        Returns:
+                            None
+                        """
                         try:
-                            protocol_mode = map_api_mode_to_protocol_mode(control_state.mode)
+                            protocol_mode = map_api_mode_to_protocol_mode(
+                                control_state.mode
+                            )
                             packet = JanusPacket(
                                 text=text,
                                 mode=protocol_mode,
                                 prosody=meta,
-                                override_emotion=control_state.emotion_override
+                                override_emotion=control_state.emotion_override,
                             )
                             link_simulator.transmit(packet.serialize())
                         except Exception as e:
@@ -582,7 +660,7 @@ async def smart_ear_loop(
 
                     avg_pitch_hz = None
                     avg_energy = None
-                    
+
                     await _emit_events(
                         text=text,
                         avg_pitch_hz=avg_pitch_hz,
@@ -598,7 +676,7 @@ async def smart_ear_loop(
     finally:
         stop_event.set()
         producer_thread.join(timeout=2)
-        if 'link_simulator' in locals():
+        if "link_simulator" in locals():
             link_simulator.close()
         executor.shutdown(wait=False)
         logger.info("Smart Ear stopped.")
@@ -616,7 +694,7 @@ async def _emit_events(
 ) -> None:
     """
     Emit transcript and packet summary events to frontend queues.
-    
+
     Args:
         text: Transcribed text content.
         avg_pitch_hz: Average pitch in Hz, or None if not available.
@@ -624,7 +702,7 @@ async def _emit_events(
         mode: JanusMode transmission mode.
         transcript_queue: Async queue for transcript messages.
         packet_queue: Async queue for packet summary messages.
-    
+
     Returns:
         None
     """
