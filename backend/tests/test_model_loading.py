@@ -29,8 +29,8 @@ def test_model_manager_singleton(monkeypatch) -> None:
     This test does not require the heavy model weights to load twice; the
     second construction should return the same instance.
     """
-    # Ensure this test stays lightweight (no model download / init).
-    monkeypatch.setenv("JANUS_QWEN3_TTS_DRY_RUN", "1")
+    # Ensure this test stays lightweight by mocking initialization.
+    monkeypatch.setattr(ModelManager, "__init__", lambda *a, **k: None)
 
     # Reset singleton state to avoid test order coupling.
     ModelManager._instance = None

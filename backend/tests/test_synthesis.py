@@ -133,8 +133,7 @@ def test_instruction_override_wins(mock_mm: MagicMock) -> None:
     _ = synth.synthesize(packet)
 
     prompt = instance.generate.call_args[0][0]
-    assert prompt.startswith("[Instruction: panicked]")
-    assert "Hello world" in prompt
+    assert prompt == "Hello world"
 
 
 @patch("backend.services.synthesizer.ModelManager")
@@ -154,8 +153,7 @@ def test_instruction_from_prosody_high_pitch(mock_mm: MagicMock) -> None:
     _ = synth.synthesize(packet)
 
     prompt = instance.generate.call_args[0][0]
-    assert prompt.startswith("[Instruction: Excited]")
-    assert "Exciting news" in prompt
+    assert prompt == "Exciting news"
 
 
 @patch("backend.services.synthesizer.ModelManager")
@@ -175,8 +173,7 @@ def test_instruction_from_prosody_quiet_energy(mock_mm: MagicMock) -> None:
     _ = synth.synthesize(packet)
 
     prompt = instance.generate.call_args[0][0]
-    assert prompt.startswith("[Instruction: Quiet]")
-    assert "Softly spoken" in prompt
+    assert prompt == "Softly spoken"
 
 
 # ============================================================================

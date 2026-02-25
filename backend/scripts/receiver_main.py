@@ -101,16 +101,12 @@ def receiver_loop(stop_event: threading.Event | None = None) -> None:
     """
     load_dotenv()
     
-    api_key = os.getenv("FISH_AUDIO_API_KEY")
-    if not api_key:
-        raise ValueError("FISH_AUDIO_API_KEY environment variable not set")
-    
     receiver_port = int(os.getenv("RECEIVER_PORT", "5005"))
     reference_audio_path = os.getenv("REFERENCE_AUDIO_PATH", None)
     use_tcp = os.getenv("USE_TCP", "").lower() == "true"
     
     audio_service = AudioService()
-    synthesizer = Synthesizer(api_key=api_key, reference_audio_path=reference_audio_path)
+    synthesizer = Synthesizer(reference_audio_path=reference_audio_path)
     
     listen_sock = None
     if use_tcp:
@@ -204,15 +200,24 @@ def receiver_loop(stop_event: threading.Event | None = None) -> None:
                       f"Pitch={packet.prosody.get('pitch', 'N/A')} -> Prompt: [{emotion_tag}]")
 
                 try:
-                    audio_bytes = synthesizer.synthesize(packet)
+                    result = synthesizer.synthesize(packet, stream=True)
+                    from typing import Generator
+                    if isinstance(result, Generator):
+                        for audio_chunk in result:
+                            if audio_chunk:
+                                try:
+                                    playback_queue.put(audio_chunk, timeout=0.1)
+                                except queue.Full:
+                                    logger.warning("Playback queue full, skipping chunk")
+                    else:
+                        if result:
+                            try:
+                                playback_queue.put(result, timeout=0.1)
+                            except queue.Full:
+                                logger.warning("Playback queue full, skipping audio")
                 except Exception as e:
                     logger.error(f"Synthesis error: {e}")
                     continue
-
-                try:
-                    playback_queue.put(audio_bytes, timeout=0.1)
-                except queue.Full:
-                    logger.warning("Playback queue full, skipping audio chunk")
 
             except KeyboardInterrupt:
                 break

@@ -46,3 +46,39 @@ def test_iter_text_tokens_char_level() -> None:
     tokens = iter_text_tokens(text)
     assert tokens == ["H", "i", "."]
 
+
+def test_sentence_buffer_weak_punctuation_ignores_short_length() -> None:
+    buf = SentenceBuffer()
+    sentences = []
+    
+    # "Hi, how are you?" -> The comma shouldn't split it because len("Hi,") < 30.
+    for tok in list("Hi, how are you?"):
+        s = buf.add_token(tok)
+        if s:
+            sentences.append(s)
+            
+    # The whole sentence is buffered, then flushed at the '?', so one item.
+    assert len(sentences) == 1
+    assert sentences[0] == "Hi, how are you?"
+
+
+def test_sentence_buffer_weak_punctuation_splits_long_length() -> None:
+    buf = SentenceBuffer()
+    sentences = []
+    
+    # 36 characters before the comma: "This is a very long text before the,"
+    text = "This is a very long text before the, and then more."
+    for tok in list(text):
+        s = buf.add_token(tok)
+        if s:
+            sentences.append(s)
+            
+    # And then we flush the rest
+    flushed = buf.flush()
+    if flushed:
+        sentences.append(flushed)
+        
+    assert len(sentences) == 2
+    assert sentences[0] == "This is a very long text before the,"
+    assert sentences[1] == "and then more."
+

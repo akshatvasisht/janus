@@ -42,7 +42,7 @@ class MockTranscriber:
             str: Predictable transcription text
         """
         self._call_count += 1
-        return f"test message {self._call_count}"
+        return f"test message {self._call_count}."
 
 
 class MockSynthesizer:
@@ -52,15 +52,16 @@ class MockSynthesizer:
         """Initialize mock synthesizer."""
         self._call_count = 0
     
-    def synthesize(self, packet: JanusPacket) -> bytes:
+    def synthesize(self, packet: JanusPacket, stream: bool = False) -> bytes | Any:
         """
         Generate synthetic WAV bytes.
         
         Args:
             packet: JanusPacket to synthesize
+            stream: Whether to return a generator of bytes or all at once.
         
         Returns:
-            bytes: Valid WAV file bytes
+            bytes: Valid WAV file bytes (or generator if stream=True)
         """
         self._call_count += 1
         
@@ -100,6 +101,8 @@ class MockSynthesizer:
         # Combine header + audio data
         wav_bytes = wav_header + audio_int16.tobytes()
         
+        if stream:
+            return (chunk for chunk in [wav_bytes])
         return wav_bytes
 
 
@@ -313,14 +316,14 @@ def test_e2e_loopback_multiple_turns(monkeypatch, mock_audio_service):
     # Track exceptions from threads
     thread_exceptions = []
     
-    def sender_wrapper():
+    def sender_wrapper() -> None:
         """Wrapper to catch exceptions from sender thread."""
         try:
             sender_main.main_loop(stop_event=sender_stop_event)
         except Exception as e:
             thread_exceptions.append(("sender", e))
     
-    def receiver_wrapper():
+    def receiver_wrapper() -> None:
         """Wrapper to catch exceptions from receiver thread."""
         try:
             receiver_main.receiver_loop(stop_event=receiver_stop_event)
