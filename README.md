@@ -37,11 +37,27 @@ Janus extends into a real-time system by leveraging an end-to-end STT → semant
 
 <img width="1897" height="216" alt="image" src="https://github.com/user-attachments/assets/e5dc9ec6-1b3b-4ed1-a05c-f89d3945d813" />
 
----
+<details>
+  <summary><b>View Dashboard</b></summary>
+
+| Blank Dashboard | Active Dashboard |
+| :---: | :---: |
+| <img src="docs/images/blank_dashboard.png" width="100%"> | <img src="docs/images/active_dashboard.png" width="100%"> |
+
+</details>
+
 
 ## Impact
 
 Traditional codecs bind audio quality to bandwidth: less data means worse sound. Janus sidesteps this by transmitting text and prosody instructions instead of audio. This allows for crystal-clear voice reconstruction at 300bps, regardless of network conditions.
+
+<details>
+  <summary><b>View Telemetry</b></summary>
+  
+  | Activy Telemetry |
+  | :---: |
+  | <img src="docs/images/telemetry.png" width="100%"> |
+</details>
 
 ### Performance
 

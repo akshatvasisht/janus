@@ -161,7 +161,7 @@ Both machines can now send and receive audio packets across the internet. The sy
 - faster-whisper will download model files on first use (stored in cache)
 - Silero VAD will download model files on first use (stored in cache)
 - Qwen3-TTS model weights are downloaded from the Hugging Face Hub on first synthesis (optional `HF_TOKEN` for gated models). `HF_HUB_DISABLE_SYMLINKS=1` is set in `backend/setup.sh` for WSL/container compatibility.
-- **Test toggles**: `JANUS_QWEN3_TTS_DRY_RUN=1` for fast unit tests (no model load). `ENABLE_QWEN3_TTS_TESTS=1` to run slow model-loading tests.
+- **Test toggles**: `ENABLE_QWEN3_TTS_TESTS=1` to run slow model-loading tests. Fast unit tests utilize mocking for the ModelManager.
 - The backend server must be running before starting the frontend for WebSocket connections
 
 ## Audio Utilities
